@@ -5,9 +5,18 @@ Provides tools for searching, retrieving, and listing recipes from a Mealie inst
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Optional
+
+
+def _slugify(text: str) -> str:
+    """Convert text to a slug (lowercase, hyphens for spaces, no special chars)."""
+    text = text.lower().strip()
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[-\s]+', '-', text)
+    return text
 
 # Handle imports for both module usage and standalone execution
 try:
@@ -157,6 +166,356 @@ def recipes_list(page: int = 1, per_page: int = 20) -> str:
 
             # If response doesn't match expected format, return as-is
             return json.dumps(response, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_create(
+    name: str,
+    description: str = "",
+    recipe_yield: str = "",
+    total_time: str = "",
+    prep_time: str = "",
+    cook_time: str = "",
+    ingredients: Optional[list[str]] = None,
+    instructions: Optional[list[str]] = None,
+    tags: Optional[list[str]] = None,
+    categories: Optional[list[str]] = None,
+) -> str:
+    """Create a new recipe in Mealie.
+
+    Args:
+        name: Recipe name (required)
+        description: Recipe description
+        recipe_yield: Yield/servings (e.g., "4 servings")
+        total_time: Total time (e.g., "1 hour 30 minutes")
+        prep_time: Prep time (e.g., "20 minutes")
+        cook_time: Cook time (e.g., "1 hour")
+        ingredients: List of ingredient strings (e.g., ["2 cups flour", "1 tsp salt"])
+        instructions: List of instruction strings (e.g., ["Preheat oven", "Mix ingredients"])
+        tags: List of tag names to apply
+        categories: List of category names to apply
+
+    Returns:
+        JSON string with created recipe details
+    """
+    try:
+        with MealieClient() as client:
+            # Step 1: Create the recipe stub with just the name
+            create_response = client.post("/api/recipes", json={"name": name})
+
+            # The response should be a string (the slug)
+            if isinstance(create_response, str):
+                slug = create_response
+            elif isinstance(create_response, dict):
+                slug = create_response.get("slug") or create_response.get("id")
+            else:
+                slug = str(create_response)
+
+            # Remove surrounding quotes if present
+            slug = slug.strip('"')
+
+            # Step 2: If we have additional fields, update the recipe
+            has_updates = any([
+                description, recipe_yield, total_time, prep_time, cook_time,
+                ingredients, instructions, tags, categories
+            ])
+
+            if has_updates:
+                # Get the created recipe to get its full structure
+                recipe = client.get(f"/api/recipes/{slug}")
+
+                # Build update payload
+                update_payload = {
+                    "id": recipe.get("id"),
+                    "userId": recipe.get("userId"),
+                    "householdId": recipe.get("householdId"),
+                    "groupId": recipe.get("groupId"),
+                    "name": name,
+                    "slug": slug,
+                }
+
+                if description:
+                    update_payload["description"] = description
+                if recipe_yield:
+                    update_payload["recipeYield"] = recipe_yield
+                if total_time:
+                    update_payload["totalTime"] = total_time
+                if prep_time:
+                    update_payload["prepTime"] = prep_time
+                if cook_time:
+                    update_payload["cookTime"] = cook_time
+
+                # Convert simple ingredient strings to Mealie format
+                if ingredients:
+                    update_payload["recipeIngredient"] = [
+                        {"note": ing, "display": ing} for ing in ingredients
+                    ]
+
+                # Convert simple instruction strings to Mealie format
+                if instructions:
+                    update_payload["recipeInstructions"] = [
+                        {"text": inst} for inst in instructions
+                    ]
+
+                # Handle tags - include groupId for proper tag creation
+                group_id = recipe.get("groupId")
+                if tags:
+                    update_payload["tags"] = [
+                        {"name": tag, "slug": _slugify(tag), "groupId": group_id}
+                        for tag in tags
+                    ]
+
+                # Handle categories - include groupId for proper category creation
+                if categories:
+                    update_payload["recipeCategory"] = [
+                        {"name": cat, "slug": _slugify(cat), "groupId": group_id}
+                        for cat in categories
+                    ]
+
+                # Update the recipe
+                client.put(f"/api/recipes/{slug}", json=update_payload)
+
+            # Get the final recipe to return
+            final_recipe = client.get(f"/api/recipes/{slug}")
+
+            result = {
+                "success": True,
+                "message": f"Recipe '{name}' created",
+                "recipe": {
+                    "name": final_recipe.get("name"),
+                    "slug": final_recipe.get("slug"),
+                    "id": final_recipe.get("id"),
+                    "description": final_recipe.get("description"),
+                }
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_create_from_url(url: str, include_tags: bool = False) -> str:
+    """Import a recipe from a URL by scraping it.
+
+    Args:
+        url: URL of the recipe to import
+        include_tags: Whether to include tags from the scraped recipe (default False)
+
+    Returns:
+        JSON string with imported recipe details
+    """
+    try:
+        with MealieClient() as client:
+            # Scrape the recipe from URL
+            response = client.post(
+                "/api/recipes/create/url",
+                json={"url": url, "includeTags": include_tags}
+            )
+
+            # The response should be a string (the slug)
+            if isinstance(response, str):
+                slug = response.strip('"')
+            elif isinstance(response, dict):
+                slug = response.get("slug") or response.get("id", "")
+            else:
+                slug = str(response).strip('"')
+
+            # Get the created recipe
+            recipe = client.get(f"/api/recipes/{slug}")
+
+            result = {
+                "success": True,
+                "message": f"Recipe imported from URL",
+                "recipe": {
+                    "name": recipe.get("name"),
+                    "slug": recipe.get("slug"),
+                    "id": recipe.get("id"),
+                    "description": recipe.get("description"),
+                    "orgURL": recipe.get("orgURL"),
+                }
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_update(
+    slug: str,
+    name: Optional[str] = None,
+    description: Optional[str] = None,
+    recipe_yield: Optional[str] = None,
+    total_time: Optional[str] = None,
+    prep_time: Optional[str] = None,
+    cook_time: Optional[str] = None,
+    ingredients: Optional[list[str]] = None,
+    instructions: Optional[list[str]] = None,
+    tags: Optional[list[str]] = None,
+    categories: Optional[list[str]] = None,
+) -> str:
+    """Update an existing recipe in Mealie.
+
+    Args:
+        slug: The recipe's slug identifier (required)
+        name: New recipe name
+        description: New description
+        recipe_yield: New yield/servings
+        total_time: New total time
+        prep_time: New prep time
+        cook_time: New cook time
+        ingredients: New list of ingredient strings (replaces existing)
+        instructions: New list of instruction strings (replaces existing)
+        tags: New list of tag names (replaces existing)
+        categories: New list of category names (replaces existing)
+
+    Returns:
+        JSON string with updated recipe details
+    """
+    try:
+        with MealieClient() as client:
+            # Get existing recipe
+            recipe = client.get(f"/api/recipes/{slug}")
+
+            # Build update payload preserving existing values
+            update_payload = {
+                "id": recipe.get("id"),
+                "userId": recipe.get("userId"),
+                "householdId": recipe.get("householdId"),
+                "groupId": recipe.get("groupId"),
+                "name": name if name is not None else recipe.get("name"),
+                "slug": recipe.get("slug"),
+                "description": description if description is not None else recipe.get("description"),
+                "recipeYield": recipe_yield if recipe_yield is not None else recipe.get("recipeYield"),
+                "totalTime": total_time if total_time is not None else recipe.get("totalTime"),
+                "prepTime": prep_time if prep_time is not None else recipe.get("prepTime"),
+                "cookTime": cook_time if cook_time is not None else recipe.get("cookTime"),
+            }
+
+            # Handle ingredients - replace if provided, keep existing otherwise
+            if ingredients is not None:
+                update_payload["recipeIngredient"] = [
+                    {"note": ing, "display": ing} for ing in ingredients
+                ]
+            else:
+                update_payload["recipeIngredient"] = recipe.get("recipeIngredient", [])
+
+            # Handle instructions - replace if provided, keep existing otherwise
+            if instructions is not None:
+                update_payload["recipeInstructions"] = [
+                    {"text": inst} for inst in instructions
+                ]
+            else:
+                update_payload["recipeInstructions"] = recipe.get("recipeInstructions", [])
+
+            # Handle tags - include groupId for proper tag creation
+            group_id = recipe.get("groupId")
+            if tags is not None:
+                update_payload["tags"] = [
+                    {"name": tag, "slug": _slugify(tag), "groupId": group_id}
+                    for tag in tags
+                ]
+            else:
+                update_payload["tags"] = recipe.get("tags", [])
+
+            # Handle categories - include groupId for proper category creation
+            if categories is not None:
+                update_payload["recipeCategory"] = [
+                    {"name": cat, "slug": _slugify(cat), "groupId": group_id}
+                    for cat in categories
+                ]
+            else:
+                update_payload["recipeCategory"] = recipe.get("recipeCategory", [])
+
+            # Update the recipe
+            client.put(f"/api/recipes/{slug}", json=update_payload)
+
+            # Get the updated recipe
+            updated_recipe = client.get(f"/api/recipes/{slug}")
+
+            result = {
+                "success": True,
+                "message": f"Recipe '{updated_recipe.get('name')}' updated",
+                "recipe": {
+                    "name": updated_recipe.get("name"),
+                    "slug": updated_recipe.get("slug"),
+                    "id": updated_recipe.get("id"),
+                    "description": updated_recipe.get("description"),
+                }
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_delete(slug: str) -> str:
+    """Delete a recipe from Mealie.
+
+    Args:
+        slug: The recipe's slug identifier
+
+    Returns:
+        JSON string confirming deletion
+    """
+    try:
+        with MealieClient() as client:
+            # Get recipe name before deleting for the message
+            try:
+                recipe = client.get(f"/api/recipes/{slug}")
+                recipe_name = recipe.get("name", slug)
+            except Exception:
+                recipe_name = slug
+
+            # Delete the recipe
+            client.delete(f"/api/recipes/{slug}")
+
+            result = {
+                "success": True,
+                "message": f"Recipe '{recipe_name}' deleted"
+            }
+            return json.dumps(result, indent=2)
 
     except MealieAPIError as e:
         error_result = {

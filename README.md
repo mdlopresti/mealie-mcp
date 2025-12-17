@@ -6,12 +6,16 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 
 ## Features
 
-### Tools (24 total)
+### Tools (28 total)
 
 **Recipes**
 - `mealie_recipes_search` - Search recipes by name, tags, or categories
 - `mealie_recipes_get` - Get full recipe details including ingredients and instructions
 - `mealie_recipes_list` - List all recipes with pagination
+- `mealie_recipes_create` - Create a new recipe
+- `mealie_recipes_create_from_url` - Import recipe by scraping a URL
+- `mealie_recipes_update` - Update an existing recipe
+- `mealie_recipes_delete` - Delete a recipe
 
 **Meal Planning**
 - `mealie_mealplans_list` - List meal plans for a date range

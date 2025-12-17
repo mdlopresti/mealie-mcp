@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-17
+
+### Added
+
+#### Recipe CRUD Tools (Phase 4)
+- `mealie_recipes_create` - Create a new recipe with name, ingredients, instructions, etc.
+- `mealie_recipes_create_from_url` - Import a recipe by scraping a URL
+- `mealie_recipes_update` - Update an existing recipe's fields
+- `mealie_recipes_delete` - Delete a recipe by slug
+
+### Notes
+- Ingredients and instructions accept simple string arrays for ease of use
+- Tags and categories are automatically created if they don't exist
+
 ## [1.0.0] - 2025-12-17
 
 ### Added
@@ -51,4 +65,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI/CD for automated builds
 - Published to GitHub Container Registry (ghcr.io)
 
+[1.1.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.1.0
 [1.0.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.0.0

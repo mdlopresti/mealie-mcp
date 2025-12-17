@@ -20,7 +20,15 @@ from fastmcp import FastMCP
 load_dotenv()
 
 # Import tools
-from tools.recipes import recipes_search, recipes_get, recipes_list
+from tools.recipes import (
+    recipes_search,
+    recipes_get,
+    recipes_list,
+    recipes_create,
+    recipes_create_from_url,
+    recipes_update,
+    recipes_delete,
+)
 from tools.mealplans import (
     mealplans_list,
     mealplans_today,
@@ -127,6 +135,128 @@ def mealie_recipes_list(page: int = 1, per_page: int = 20) -> str:
         JSON string with paginated recipe list and metadata
     """
     return recipes_list(page=page, per_page=per_page)
+
+
+# -----------------------------------------------------------------------------
+# Recipe CRUD Tools (Phase 4)
+# -----------------------------------------------------------------------------
+
+@mcp.tool()
+def mealie_recipes_create(
+    name: str,
+    description: str = "",
+    recipe_yield: str = "",
+    total_time: str = "",
+    prep_time: str = "",
+    cook_time: str = "",
+    ingredients: list[str] | None = None,
+    instructions: list[str] | None = None,
+    tags: list[str] | None = None,
+    categories: list[str] | None = None,
+) -> str:
+    """Create a new recipe in Mealie.
+
+    Args:
+        name: Recipe name (required)
+        description: Recipe description
+        recipe_yield: Yield/servings (e.g., "4 servings")
+        total_time: Total time (e.g., "1 hour 30 minutes")
+        prep_time: Prep time (e.g., "20 minutes")
+        cook_time: Cook time (e.g., "1 hour")
+        ingredients: List of ingredient strings (e.g., ["2 cups flour", "1 tsp salt"])
+        instructions: List of instruction strings (e.g., ["Preheat oven", "Mix ingredients"])
+        tags: List of tag names to apply
+        categories: List of category names to apply
+
+    Returns:
+        JSON string with created recipe details
+    """
+    return recipes_create(
+        name=name,
+        description=description,
+        recipe_yield=recipe_yield,
+        total_time=total_time,
+        prep_time=prep_time,
+        cook_time=cook_time,
+        ingredients=ingredients,
+        instructions=instructions,
+        tags=tags,
+        categories=categories,
+    )
+
+
+@mcp.tool()
+def mealie_recipes_create_from_url(url: str, include_tags: bool = False) -> str:
+    """Import a recipe from a URL by scraping it.
+
+    Args:
+        url: URL of the recipe to import
+        include_tags: Whether to include tags from the scraped recipe (default False)
+
+    Returns:
+        JSON string with imported recipe details
+    """
+    return recipes_create_from_url(url=url, include_tags=include_tags)
+
+
+@mcp.tool()
+def mealie_recipes_update(
+    slug: str,
+    name: str | None = None,
+    description: str | None = None,
+    recipe_yield: str | None = None,
+    total_time: str | None = None,
+    prep_time: str | None = None,
+    cook_time: str | None = None,
+    ingredients: list[str] | None = None,
+    instructions: list[str] | None = None,
+    tags: list[str] | None = None,
+    categories: list[str] | None = None,
+) -> str:
+    """Update an existing recipe in Mealie.
+
+    Args:
+        slug: The recipe's slug identifier (required)
+        name: New recipe name
+        description: New description
+        recipe_yield: New yield/servings
+        total_time: New total time
+        prep_time: New prep time
+        cook_time: New cook time
+        ingredients: New list of ingredient strings (replaces existing)
+        instructions: New list of instruction strings (replaces existing)
+        tags: New list of tag names (replaces existing)
+        categories: New list of category names (replaces existing)
+
+    Returns:
+        JSON string with updated recipe details
+    """
+    return recipes_update(
+        slug=slug,
+        name=name,
+        description=description,
+        recipe_yield=recipe_yield,
+        total_time=total_time,
+        prep_time=prep_time,
+        cook_time=cook_time,
+        ingredients=ingredients,
+        instructions=instructions,
+        tags=tags,
+        categories=categories,
+    )
+
+
+@mcp.tool()
+def mealie_recipes_delete(slug: str) -> str:
+    """Delete a recipe from Mealie.
+
+    Args:
+        slug: The recipe's slug identifier
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return recipes_delete(slug=slug)
 
 
 # -----------------------------------------------------------------------------
