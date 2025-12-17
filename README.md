@@ -1,5 +1,7 @@
 # Mealie MCP Server
 
+[![Build and Push Docker Image](https://github.com/mdlopresti/mealie-mcp/actions/workflows/docker.yml/badge.svg)](https://github.com/mdlopresti/mealie-mcp/actions/workflows/docker.yml)
+
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants to interact with [Mealie](https://mealie.io/) for recipe management, meal planning, and shopping lists.
 
 ## Features
@@ -52,10 +54,16 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 
 ## Quick Start
 
-### 1. Build the Docker Image
+### 1. Get the Docker Image
 
+**Option A: Pull from GitHub Container Registry (recommended)**
 ```bash
-git clone https://github.com/YOUR_USERNAME/mealie-mcp.git
+docker pull ghcr.io/mdlopresti/mealie-mcp:latest
+```
+
+**Option B: Build from source**
+```bash
+git clone https://github.com/mdlopresti/mealie-mcp.git
 cd mealie-mcp
 docker build -t mealie-mcp:latest .
 ```
@@ -81,7 +89,7 @@ Add to `.mcp.json` in your project root:
         "run", "-i", "--rm",
         "-e", "MEALIE_URL=https://your-mealie-instance.com",
         "-e", "MEALIE_API_TOKEN=your-api-token-here",
-        "mealie-mcp:latest"
+        "ghcr.io/mdlopresti/mealie-mcp:latest"
       ]
     }
   }
