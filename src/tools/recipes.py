@@ -625,6 +625,11 @@ def recipes_update_structured_ingredients(
                     import uuid
                     mealie_ingredient["referenceId"] = str(uuid.uuid4())
 
+                # Add fields that Mealie expects (set to null if not provided)
+                mealie_ingredient["title"] = ingredient_data.get("title", "")
+                mealie_ingredient["originalText"] = ingredient_data.get("originalText")
+                mealie_ingredient["referencedRecipe"] = ingredient_data.get("referencedRecipe")
+
                 mealie_ingredients.append(mealie_ingredient)
 
             # Update the recipe with structured ingredients
