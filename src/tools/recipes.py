@@ -538,59 +538,26 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - can be dict or string
-                # Clean unit dict to only include writable fields
+                # Add unit - Mealie accepts full parser output including read-only fields
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
                     if isinstance(unit, dict):
-                        # Only include writable fields, exclude read-only timestamps
-                        clean_unit = {
-                            "name": unit.get("name"),
-                            "description": unit.get("description", ""),
-                            "fraction": unit.get("fraction", True),
-                            "abbreviation": unit.get("abbreviation", ""),
-                            "useAbbreviation": unit.get("useAbbreviation", False),
-                        }
-                        # Only include id if it's not null
-                        if unit.get("id"):
-                            clean_unit["id"] = unit["id"]
-                        # Optional fields
-                        if "pluralName" in unit and unit["pluralName"]:
-                            clean_unit["pluralName"] = unit["pluralName"]
-                        if "pluralAbbreviation" in unit and unit["pluralAbbreviation"]:
-                            clean_unit["pluralAbbreviation"] = unit["pluralAbbreviation"]
-                        if "aliases" in unit and unit["aliases"]:
-                            clean_unit["aliases"] = unit["aliases"]
-                        mealie_ingredient["unit"] = clean_unit
+                        # Pass the full unit object - Mealie handles it correctly
+                        mealie_ingredient["unit"] = unit
                     elif unit:
                         # If it's just a string, create a dict with name
+                        # Note: This will fail if the unit doesn't exist in Mealie
                         mealie_ingredient["unit"] = {"name": str(unit)}
 
-                # Add food - can be dict or string
-                # Clean food dict to only include writable fields
+                # Add food - Mealie accepts full parser output including read-only fields
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
                     if isinstance(food, dict):
-                        # Only include writable fields, exclude read-only timestamps
-                        clean_food = {
-                            "name": food.get("name"),
-                            "description": food.get("description", ""),
-                        }
-                        # Only include id if it's not null
-                        if food.get("id"):
-                            clean_food["id"] = food["id"]
-                        # Optional fields
-                        if "pluralName" in food and food["pluralName"]:
-                            clean_food["pluralName"] = food["pluralName"]
-                        if "labelId" in food and food["labelId"]:
-                            clean_food["labelId"] = food["labelId"]
-                        if "aliases" in food and food["aliases"]:
-                            clean_food["aliases"] = food["aliases"]
-                        if "householdsWithIngredientFood" in food and food["householdsWithIngredientFood"]:
-                            clean_food["householdsWithIngredientFood"] = food["householdsWithIngredientFood"]
-                        mealie_ingredient["food"] = clean_food
+                        # Pass the full food object - Mealie handles it correctly
+                        mealie_ingredient["food"] = food
                     elif food:
                         # If it's just a string, create a dict with name
+                        # Note: This will fail if the food doesn't exist in Mealie
                         mealie_ingredient["food"] = {"name": str(food)}
 
                 # Add note
