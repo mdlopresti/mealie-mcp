@@ -490,6 +490,127 @@ def recipes_update(
         return json.dumps(error_result, indent=2)
 
 
+def recipes_update_structured_ingredients(
+    slug: str,
+    parsed_ingredients: list[dict]
+) -> str:
+    """Update a recipe with structured ingredients from parser output.
+
+    This tool accepts the output from mealie_parser_ingredients_batch and updates
+    a recipe with fully structured ingredients including quantity, unit, and food.
+
+    Args:
+        slug: The recipe's slug identifier
+        parsed_ingredients: List of parsed ingredient dicts from parser tools.
+            Each dict should have an 'ingredient' field with structured data.
+
+    Returns:
+        JSON string with updated recipe details
+
+    Example:
+        # First parse ingredients
+        parsed = mealie_parser_ingredients_batch(["2 cups flour", "1 tsp salt"])
+
+        # Then update recipe with parsed data
+        mealie_recipes_update_structured_ingredients(
+            slug="my-recipe",
+            parsed_ingredients=parsed['parsed_ingredients']
+        )
+    """
+    try:
+        with MealieClient() as client:
+            # Convert parser output format to Mealie ingredient format
+            mealie_ingredients = []
+
+            for parsed in parsed_ingredients:
+                # Parser output has structure: {input, confidence, ingredient}
+                # We need the 'ingredient' field
+                if isinstance(parsed, dict) and "ingredient" in parsed:
+                    ingredient_data = parsed["ingredient"]
+                else:
+                    # If it's already in the right format, use as-is
+                    ingredient_data = parsed
+
+                # Build the ingredient dict for Mealie
+                mealie_ingredient = {}
+
+                # Add quantity
+                if "quantity" in ingredient_data:
+                    mealie_ingredient["quantity"] = ingredient_data["quantity"]
+
+                # Add unit - can be dict or string
+                if "unit" in ingredient_data:
+                    unit = ingredient_data["unit"]
+                    if isinstance(unit, dict):
+                        mealie_ingredient["unit"] = unit
+                    elif unit:
+                        # If it's just a string, create a dict with name
+                        mealie_ingredient["unit"] = {"name": str(unit)}
+
+                # Add food - can be dict or string
+                if "food" in ingredient_data:
+                    food = ingredient_data["food"]
+                    if isinstance(food, dict):
+                        mealie_ingredient["food"] = food
+                    elif food:
+                        # If it's just a string, create a dict with name
+                        mealie_ingredient["food"] = {"name": str(food)}
+
+                # Add note
+                if "note" in ingredient_data and ingredient_data["note"]:
+                    mealie_ingredient["note"] = ingredient_data["note"]
+
+                # Add display (required for human-readable format)
+                if "display" in ingredient_data:
+                    mealie_ingredient["display"] = ingredient_data["display"]
+                else:
+                    # Construct display from parsed data if not provided
+                    parts = []
+                    if "quantity" in mealie_ingredient:
+                        parts.append(str(mealie_ingredient["quantity"]))
+                    if "unit" in mealie_ingredient:
+                        unit_name = mealie_ingredient["unit"].get("name", "") if isinstance(mealie_ingredient["unit"], dict) else str(mealie_ingredient["unit"])
+                        if unit_name:
+                            parts.append(unit_name)
+                    if "food" in mealie_ingredient:
+                        food_name = mealie_ingredient["food"].get("name", "") if isinstance(mealie_ingredient["food"], dict) else str(mealie_ingredient["food"])
+                        if food_name:
+                            parts.append(food_name)
+                    if "note" in mealie_ingredient:
+                        parts.append(f"({mealie_ingredient['note']})")
+                    mealie_ingredient["display"] = " ".join(parts)
+
+                mealie_ingredients.append(mealie_ingredient)
+
+            # Update the recipe with structured ingredients
+            updated_recipe = client.update_recipe_ingredients(slug, mealie_ingredients)
+
+            result = {
+                "success": True,
+                "message": f"Recipe '{updated_recipe.get('name', slug)}' updated with {len(mealie_ingredients)} structured ingredients",
+                "recipe": {
+                    "name": updated_recipe.get("name"),
+                    "slug": updated_recipe.get("slug"),
+                    "id": updated_recipe.get("id"),
+                    "ingredient_count": len(mealie_ingredients),
+                }
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 def recipes_delete(slug: str) -> str:
     """Delete a recipe from Mealie.
 

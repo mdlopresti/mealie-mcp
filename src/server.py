@@ -27,6 +27,7 @@ from tools.recipes import (
     recipes_create,
     recipes_create_from_url,
     recipes_update,
+    recipes_update_structured_ingredients,
     recipes_delete,
 )
 from tools.mealplans import (
@@ -247,6 +248,54 @@ def mealie_recipes_update(
         instructions=instructions,
         tags=tags,
         categories=categories,
+    )
+
+
+@mcp.tool()
+def mealie_recipes_update_structured_ingredients(
+    slug: str,
+    parsed_ingredients: list[dict]
+) -> str:
+    """Update a recipe with structured ingredients from parser output.
+
+    This tool bridges the gap between ingredient parsing and recipe updates by accepting
+    parsed ingredient data and updating a recipe with fully structured ingredients
+    (quantity, unit, food fields populated).
+
+    Args:
+        slug: The recipe's slug identifier (required)
+        parsed_ingredients: List of parsed ingredient dicts from mealie_parser_ingredients_batch.
+            Each dict should have an 'ingredient' field with structured data containing:
+            - quantity: number (e.g., 2.0)
+            - unit: string or dict with name (e.g., "cup" or {"name": "cup"})
+            - food: string or dict with name (e.g., "flour" or {"name": "flour"})
+            - note: optional string (e.g., "sifted")
+            - display: optional string for human-readable format
+
+    Returns:
+        JSON string with updated recipe details
+
+    Example workflow:
+        1. Parse ingredients:
+           parsed = mealie_parser_ingredients_batch(["2 cups flour", "1 tsp salt"])
+
+        2. Update recipe with parsed data:
+           mealie_recipes_update_structured_ingredients(
+               slug="my-recipe",
+               parsed_ingredients=parsed['parsed_ingredients']
+           )
+
+        3. Recipe now has structured ingredients with quantity, unit, and food fields populated
+
+    Use cases:
+        - Convert text-only ingredients to structured format for better data management
+        - Import recipes with structured ingredient data
+        - Enable recipe scaling and unit conversions
+        - Improve shopping list generation with structured data
+    """
+    return recipes_update_structured_ingredients(
+        slug=slug,
+        parsed_ingredients=parsed_ingredients
     )
 
 

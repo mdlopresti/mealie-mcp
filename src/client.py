@@ -263,6 +263,19 @@ class MealieClient:
         """
         return self._make_request("PUT", endpoint, json=json)
 
+    def patch(self, endpoint: str, json: Optional[Dict[str, Any]] = None) -> Any:
+        """
+        Perform PATCH request.
+
+        Args:
+            endpoint: API endpoint path
+            json: JSON body
+
+        Returns:
+            Response JSON data
+        """
+        return self._make_request("PATCH", endpoint, json=json)
+
     def delete(self, endpoint: str) -> Any:
         """
         Perform DELETE request.
@@ -353,6 +366,31 @@ class MealieClient:
             "parser": parser
         }
         return self.post("/api/parser/ingredients", json=payload)
+
+    def update_recipe_ingredients(self, slug: str, ingredients: list[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Update a recipe with structured ingredients.
+
+        Args:
+            slug: The recipe's slug identifier
+            ingredients: List of structured ingredient dicts with keys:
+                - quantity: number (nullable)
+                - unit: dict with id and name, or just name string (nullable)
+                - food: dict with id and name, or just name string (nullable)
+                - note: string (nullable)
+                - display: string for human-readable format
+
+        Returns:
+            Updated recipe data
+
+        Raises:
+            MealieAPIError: If update fails
+        """
+        # Update recipe with new ingredients using PATCH
+        payload = {
+            "recipeIngredient": ingredients
+        }
+        return self.patch(f"/api/recipes/{slug}", json=payload)
 
 
 if __name__ == "__main__":

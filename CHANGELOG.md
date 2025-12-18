@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-12-18
+
+### Added
+
+#### Structured Ingredient Update Support (Phase 6)
+- `mealie_recipes_update_structured_ingredients` - Update recipes with structured ingredients from parser output
+- Bridges the gap between ingredient parsing (v1.2.0) and recipe updates
+- Accepts parsed ingredient data and updates recipes with full structure (quantity, unit, food fields)
+
+### Technical Details
+- Added `patch()` method to MealieClient for PATCH requests
+- Added `update_recipe_ingredients()` method to MealieClient
+- Created `recipes_update_structured_ingredients()` in tools/recipes.py
+- Handles conversion from parser output format to Mealie ingredient schema
+- Supports both dict and string formats for unit/food fields
+- Auto-generates display field if not provided
+
+### Use Cases
+- Convert text-only ingredients to structured format for better data management
+- Import recipes with structured ingredient data
+- Enable recipe scaling and unit conversions
+- Improve shopping list generation with structured data
+
+### Example Workflow
+```python
+# 1. Parse ingredients
+parsed = mealie_parser_ingredients_batch(["2 cups flour", "1 tsp salt"])
+
+# 2. Update recipe with structured data
+mealie_recipes_update_structured_ingredients(
+    slug="my-recipe",
+    parsed_ingredients=parsed['parsed_ingredients']
+)
+
+# 3. Recipe now has quantity, unit, food fields populated
+```
+
 ## [1.2.0] - 2025-12-18
 
 ### Added
@@ -86,6 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI/CD for automated builds
 - Published to GitHub Container Registry (ghcr.io)
 
+[1.3.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.3.0
 [1.2.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.2.0
 [1.1.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.1.0
 [1.0.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.0.0
