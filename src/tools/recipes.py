@@ -545,13 +545,15 @@ def recipes_update_structured_ingredients(
                     if isinstance(unit, dict):
                         # Only include writable fields, exclude read-only timestamps
                         clean_unit = {
-                            "id": unit.get("id"),
                             "name": unit.get("name"),
                             "description": unit.get("description", ""),
                             "fraction": unit.get("fraction", True),
                             "abbreviation": unit.get("abbreviation", ""),
                             "useAbbreviation": unit.get("useAbbreviation", False),
                         }
+                        # Only include id if it's not null
+                        if unit.get("id"):
+                            clean_unit["id"] = unit["id"]
                         # Optional fields
                         if "pluralName" in unit and unit["pluralName"]:
                             clean_unit["pluralName"] = unit["pluralName"]
@@ -571,10 +573,12 @@ def recipes_update_structured_ingredients(
                     if isinstance(food, dict):
                         # Only include writable fields, exclude read-only timestamps
                         clean_food = {
-                            "id": food.get("id"),
                             "name": food.get("name"),
                             "description": food.get("description", ""),
                         }
+                        # Only include id if it's not null
+                        if food.get("id"):
+                            clean_food["id"] = food["id"]
                         # Optional fields
                         if "pluralName" in food and food["pluralName"]:
                             clean_food["pluralName"] = food["pluralName"]
