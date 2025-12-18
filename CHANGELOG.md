@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-12-18
+
+### Added
+
+#### Ingredient Parser Tools (Phase 5)
+- `mealie_parser_ingredient` - Parse single ingredient string to structured format (quantity, unit, food)
+- `mealie_parser_ingredients_batch` - Parse multiple ingredient strings at once for efficiency
+
+### Technical Details
+- Added `parse_ingredient()` and `parse_ingredients_batch()` methods to MealieClient
+- Created new `tools/parser.py` module with parser tool implementations
+- Supports three parser types: "nlp" (default, best for most cases), "brute", and "openai"
+- Returns structured data with quantity, unit, food name, and confidence scores
+- Useful for converting natural language ingredient descriptions into structured recipe data
+
+### Use Cases
+- Parse ingredient lists when creating recipes from unstructured text
+- Extract structured data from scraped recipes
+- Validate ingredient formatting
+- Analyze ingredient quantities and units
+
 ## [1.1.0] - 2025-12-17
 
 ### Added
@@ -65,5 +86,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI/CD for automated builds
 - Published to GitHub Container Registry (ghcr.io)
 
+[1.2.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.2.0
 [1.1.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.1.0
 [1.0.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.0.0

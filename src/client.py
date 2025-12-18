@@ -314,6 +314,46 @@ class MealieClient:
                 response_body=e.response_body,
             )
 
+    def parse_ingredient(self, ingredient: str, parser: str = "nlp") -> Dict[str, Any]:
+        """
+        Parse a single ingredient string to structured format.
+
+        Args:
+            ingredient: The ingredient string to parse (e.g., "2 cups flour")
+            parser: Parser type - "nlp", "brute", or "openai" (default: "nlp")
+
+        Returns:
+            ParsedIngredient dict with input, confidence, and ingredient fields
+
+        Raises:
+            MealieAPIError: If parsing fails
+        """
+        payload = {
+            "ingredient": ingredient,
+            "parser": parser
+        }
+        return self.post("/api/parser/ingredient", json=payload)
+
+    def parse_ingredients_batch(self, ingredients: list[str], parser: str = "nlp") -> list[Dict[str, Any]]:
+        """
+        Parse multiple ingredient strings to structured format.
+
+        Args:
+            ingredients: List of ingredient strings to parse
+            parser: Parser type - "nlp", "brute", or "openai" (default: "nlp")
+
+        Returns:
+            List of ParsedIngredient dicts
+
+        Raises:
+            MealieAPIError: If parsing fails
+        """
+        payload = {
+            "ingredients": ingredients,
+            "parser": parser
+        }
+        return self.post("/api/parser/ingredients", json=payload)
+
 
 if __name__ == "__main__":
     """

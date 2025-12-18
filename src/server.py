@@ -52,6 +52,10 @@ from tools.shopping import (
     shopping_generate_from_mealplan,
     shopping_lists_clear_checked,
 )
+from tools.parser import (
+    parser_ingredient,
+    parser_ingredients_batch,
+)
 
 # Import resources
 from resources.recipes import get_recipes_list, get_recipe_detail
@@ -588,6 +592,63 @@ def mealie_shopping_clear_checked(list_id: str) -> str:
         JSON string with count of removed items
     """
     return shopping_lists_clear_checked(list_id=list_id)
+
+
+# -----------------------------------------------------------------------------
+# Parser Tools (Phase 5)
+# -----------------------------------------------------------------------------
+
+@mcp.tool()
+def mealie_parser_ingredient(ingredient: str, parser: str = "nlp") -> str:
+    """Parse a single ingredient string to structured format.
+
+    This tool uses Mealie's ingredient parser to extract structured data from
+    natural language ingredient descriptions. The parsed result includes:
+    - Quantity (e.g., 2.0)
+    - Unit (e.g., "cups", "tsp", "oz")
+    - Food name (e.g., "flour", "salt", "butter")
+    - Confidence scores for each component
+
+    Args:
+        ingredient: Ingredient string to parse (e.g., "2 cups flour", "1 tsp salt")
+        parser: Parser type - "nlp" (default, best for most cases), "brute", or "openai"
+
+    Returns:
+        JSON string with parsed ingredient structure:
+        - input: Original ingredient text
+        - confidence: Confidence scores for parsed components
+        - ingredient: Structured data with quantity, unit, food, display
+
+    Examples:
+        "2 cups flour" -> quantity: 2.0, unit: "cup", food: "flour"
+        "1 tsp salt" -> quantity: 1.0, unit: "teaspoon", food: "salt"
+        "1/2 cup butter" -> quantity: 0.5, unit: "cup", food: "butter"
+    """
+    return parser_ingredient(ingredient=ingredient, parser=parser)
+
+
+@mcp.tool()
+def mealie_parser_ingredients_batch(ingredients: list[str], parser: str = "nlp") -> str:
+    """Parse multiple ingredient strings to structured format.
+
+    Batch version of mealie_parser_ingredient that efficiently parses multiple
+    ingredients at once. Useful when processing full recipe ingredient lists.
+
+    Args:
+        ingredients: List of ingredient strings to parse
+        parser: Parser type - "nlp" (default, best for most cases), "brute", or "openai"
+
+    Returns:
+        JSON string with array of parsed ingredients, each containing:
+        - input: Original ingredient text
+        - confidence: Confidence scores
+        - ingredient: Structured data with quantity, unit, food, display
+
+    Example:
+        ingredients: ["2 cups flour", "1 tsp salt", "1/2 cup butter"]
+        Returns array with 3 parsed ingredient objects
+    """
+    return parser_ingredients_batch(ingredients=ingredients, parser=parser)
 
 
 # =============================================================================

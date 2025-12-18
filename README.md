@@ -6,7 +6,7 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 
 ## Features
 
-### Tools (28 total)
+### Tools (30 total)
 
 **Recipes**
 - `mealie_recipes_search` - Search recipes by name, tags, or categories
@@ -39,6 +39,10 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - `mealie_shopping_add_recipe` - Add recipe ingredients to list
 - `mealie_shopping_generate_from_mealplan` - Generate shopping list from meal plan
 - `mealie_shopping_clear_checked` - Clear all checked items
+
+**Ingredient Parsing**
+- `mealie_parser_ingredient` - Parse single ingredient string to structured format
+- `mealie_parser_ingredients_batch` - Parse multiple ingredient strings at once
 
 ### Resources
 
@@ -150,7 +154,8 @@ mealie-mcp/
     ├── tools/          # MCP tool implementations
     │   ├── recipes.py
     │   ├── mealplans.py
-    │   └── shopping.py
+    │   ├── shopping.py
+    │   └── parser.py
     └── resources/      # MCP resource implementations
         ├── recipes.py
         ├── mealplans.py
