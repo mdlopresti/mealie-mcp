@@ -538,43 +538,21 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - v1.4.11: More defensive null/None handling for IDs
-                # If unit has ID (exists in DB): send minimal dict with id/name
-                # If unit has no ID (new): send just name string for Pydantic validator to create it
+                # Add unit - v1.4.12: ALWAYS send as string, let Mealie handle it
+                # Mealie's Pydantic field validators will create or reference by name
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
-                    if isinstance(unit, dict):
-                        # Check if this unit already exists (has an ID that's not None/null/empty)
-                        unit_id = unit.get("id")
-                        if unit_id is not None and unit_id != "" and unit_id:
-                            # Existing unit - send minimal dict with ID
-                            mealie_ingredient["unit"] = {
-                                "id": unit_id,
-                                "name": unit["name"]
-                            }
-                        elif "name" in unit and unit["name"]:
-                            # New unit - send just name string
-                            mealie_ingredient["unit"] = unit["name"]
+                    if isinstance(unit, dict) and "name" in unit:
+                        mealie_ingredient["unit"] = unit["name"]
                     elif unit:
                         mealie_ingredient["unit"] = str(unit)
 
-                # Add food - v1.4.11: More defensive null/None handling for IDs
-                # If food has ID (exists in DB): send minimal dict with id/name
-                # If food has no ID (new): send just name string for Pydantic validator to create it
+                # Add food - v1.4.12: ALWAYS send as string, let Mealie handle it
+                # Mealie's Pydantic field validators will create or reference by name
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
-                    if isinstance(food, dict):
-                        # Check if this food already exists (has an ID that's not None/null/empty)
-                        food_id = food.get("id")
-                        if food_id is not None and food_id != "" and food_id:
-                            # Existing food - send minimal dict with ID
-                            mealie_ingredient["food"] = {
-                                "id": food_id,
-                                "name": food["name"]
-                            }
-                        elif "name" in food and food["name"]:
-                            # New food - send just name string
-                            mealie_ingredient["food"] = food["name"]
+                    if isinstance(food, dict) and "name" in food:
+                        mealie_ingredient["food"] = food["name"]
                     elif food:
                         mealie_ingredient["food"] = str(food)
 
