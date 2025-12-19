@@ -399,8 +399,8 @@ def recipes_update(
         cook_time: New cook time
         ingredients: New list of ingredient strings (replaces existing)
         instructions: New list of instruction strings (replaces existing)
-        tags: New list of tag names (replaces existing)
-        categories: New list of category names (replaces existing)
+        tags: New list of tag names (ADDITIVE - adds to existing tags)
+        categories: New list of category names (ADDITIVE - adds to existing categories)
         org_url: Original recipe URL
         image: Recipe image identifier
 
@@ -413,13 +413,14 @@ def recipes_update(
             recipe = client.get(f"/api/recipes/{slug}")
 
             # Build update payload preserving existing values
+            # CRITICAL: We must include ALL required fields for PUT to work
             update_payload = {
                 "id": recipe.get("id"),
                 "userId": recipe.get("userId"),
                 "householdId": recipe.get("householdId"),
                 "groupId": recipe.get("groupId"),
                 "name": name if name is not None else recipe.get("name"),
-                "slug": recipe.get("slug"),
+                "slug": slug,  # Always use the provided slug, not recipe.get("slug")
                 "description": description if description is not None else recipe.get("description"),
                 "recipeYield": recipe_yield if recipe_yield is not None else recipe.get("recipeYield"),
                 "totalTime": total_time if total_time is not None else recipe.get("totalTime"),
@@ -445,24 +446,50 @@ def recipes_update(
             else:
                 update_payload["recipeInstructions"] = recipe.get("recipeInstructions", [])
 
-            # Handle tags - include groupId for proper tag creation
+            # Handle tags - ADDITIVE behavior (add to existing tags)
             group_id = recipe.get("groupId")
-            if tags is not None:
-                update_payload["tags"] = [
-                    {"name": tag, "slug": _slugify(tag), "groupId": group_id}
-                    for tag in tags
-                ]
-            else:
-                update_payload["tags"] = recipe.get("tags", [])
+            existing_tags = recipe.get("tags", [])
 
-            # Handle categories - include groupId for proper category creation
-            if categories is not None:
-                update_payload["recipeCategory"] = [
-                    {"name": cat, "slug": _slugify(cat), "groupId": group_id}
-                    for cat in categories
-                ]
+            if tags is not None:
+                # Get existing tag names
+                existing_tag_names = {tag.get("name") for tag in existing_tags if isinstance(tag, dict)}
+
+                # Create tag objects for new tags
+                new_tag_objects = []
+                for tag in tags:
+                    if tag not in existing_tag_names:
+                        new_tag_objects.append({
+                            "name": tag,
+                            "slug": _slugify(tag),
+                            "groupId": group_id
+                        })
+
+                # Combine existing and new tags
+                update_payload["tags"] = existing_tags + new_tag_objects
             else:
-                update_payload["recipeCategory"] = recipe.get("recipeCategory", [])
+                update_payload["tags"] = existing_tags
+
+            # Handle categories - ADDITIVE behavior (add to existing categories)
+            existing_categories = recipe.get("recipeCategory", [])
+
+            if categories is not None:
+                # Get existing category names
+                existing_cat_names = {cat.get("name") for cat in existing_categories if isinstance(cat, dict)}
+
+                # Create category objects for new categories
+                new_cat_objects = []
+                for cat in categories:
+                    if cat not in existing_cat_names:
+                        new_cat_objects.append({
+                            "name": cat,
+                            "slug": _slugify(cat),
+                            "groupId": group_id
+                        })
+
+                # Combine existing and new categories
+                update_payload["recipeCategory"] = existing_categories + new_cat_objects
+            else:
+                update_payload["recipeCategory"] = existing_categories
 
             # Update the recipe
             client.put(f"/api/recipes/{slug}", json=update_payload)
@@ -478,6 +505,8 @@ def recipes_update(
                     "slug": updated_recipe.get("slug"),
                     "id": updated_recipe.get("id"),
                     "description": updated_recipe.get("description"),
+                    "tags": [tag.get("name") for tag in updated_recipe.get("tags", [])],
+                    "categories": [cat.get("name") for cat in updated_recipe.get("recipeCategory", [])],
                 }
             }
             return json.dumps(result, indent=2)

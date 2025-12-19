@@ -505,9 +505,26 @@ class MealieClient:
         Raises:
             MealieAPIError: If bulk action fails
         """
+        # Get all existing tags to look up IDs
+        all_tags = self.list_tags()
+        tag_map = {tag["name"]: tag for tag in all_tags}
+
+        # Convert tag names to tag objects (with id, name, slug)
+        tag_objects = []
+        for tag_name in tags:
+            if tag_name in tag_map:
+                # Use existing tag
+                tag_objects.append(tag_map[tag_name])
+            else:
+                # Tag doesn't exist - API will create it, send with name and slug only
+                tag_objects.append({
+                    "name": tag_name,
+                    "slug": tag_name.lower().replace(" ", "-")
+                })
+
         payload = {
             "recipes": recipe_ids,
-            "tags": tags
+            "tags": tag_objects
         }
 
         return self.post("/api/recipes/bulk-actions/tag", json=payload)
@@ -526,9 +543,26 @@ class MealieClient:
         Raises:
             MealieAPIError: If bulk action fails
         """
+        # Get all existing categories to look up IDs
+        all_categories = self.list_categories()
+        category_map = {cat["name"]: cat for cat in all_categories}
+
+        # Convert category names to category objects (with id, name, slug)
+        category_objects = []
+        for cat_name in categories:
+            if cat_name in category_map:
+                # Use existing category
+                category_objects.append(category_map[cat_name])
+            else:
+                # Category doesn't exist - API will create it, send with name and slug only
+                category_objects.append({
+                    "name": cat_name,
+                    "slug": cat_name.lower().replace(" ", "-")
+                })
+
         payload = {
             "recipes": recipe_ids,
-            "categories": categories
+            "categories": category_objects
         }
 
         return self.post("/api/recipes/bulk-actions/categorize", json=payload)
@@ -842,6 +876,18 @@ class MealieClient:
     # -------------------------------------------------------------------------
     # Organizers Management (Categories, Tags, Tools)
     # -------------------------------------------------------------------------
+
+    def list_categories(self) -> list[Dict[str, Any]]:
+        """List all categories."""
+        return self.get("/api/organizers/categories")
+
+    def list_tags(self) -> list[Dict[str, Any]]:
+        """List all tags."""
+        return self.get("/api/organizers/tags")
+
+    def list_tools(self) -> list[Dict[str, Any]]:
+        """List all tools."""
+        return self.get("/api/organizers/tools")
 
     def update_category(
         self,

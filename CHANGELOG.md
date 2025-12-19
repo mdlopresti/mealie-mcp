@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2025-12-19
+
+### Fixed
+- **Critical: `mealie_recipes_update` "Recipe already exists" bug**
+  - Fixed issue where updating any recipe would fail with "Recipe already exists" error
+  - Root cause: Recipe name was being sent in update payload, triggering Mealie's uniqueness check
+  - Solution: Changed tags and categories to ADDITIVE behavior (adds to existing instead of replacing)
+  - Properly handles slug to avoid conflicts
+  - Now successfully updates recipes without name collision errors
+
+- **Bulk operations validation errors**
+  - Fixed `mealie_recipes_bulk_tag` - Now converts tag names to proper objects before sending to API
+  - Fixed `mealie_recipes_bulk_categorize` - Now converts category names to proper objects before sending to API
+  - Root cause: Mealie API expects dict objects with {id, name, slug} but tools were sending string arrays
+  - Solution: Added helper methods to list and look up existing tags/categories, create proper object format
+
+### Added
+- `list_categories()` method to MealieClient - Lists all available categories
+- `list_tags()` method to MealieClient - Lists all available tags
+- `list_tools()` method to MealieClient - Lists all available tools
+
+### Changed
+- **Breaking**: `mealie_recipes_update` tags and categories parameters now use ADDITIVE behavior
+  - Previous: tags/categories replaced existing values
+  - New: tags/categories are added to existing values (no duplicates)
+  - This prevents accidental data loss and aligns with expected bulk operations behavior
+
 ## [1.6.1] - 2025-12-19
 
 ### Added
