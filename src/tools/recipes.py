@@ -618,15 +618,18 @@ def recipes_update_structured_ingredients(
                     "slug": updated_recipe.get("slug"),
                     "id": updated_recipe.get("id"),
                     "ingredient_count": len(mealie_ingredients),
-                }
+                },
+                "debug_ingredients_sent": mealie_ingredients  # v1.4.13: Include debug info
             }
             return json.dumps(result, indent=2)
 
     except MealieAPIError as e:
+        # v1.4.13: Include ingredients in error for debugging
         error_result = {
             "error": str(e),
             "status_code": e.status_code,
-            "response_body": e.response_body
+            "response_body": e.response_body,
+            "debug_ingredients_sent": mealie_ingredients if 'mealie_ingredients' in locals() else []
         }
         return json.dumps(error_result, indent=2)
     except Exception as e:
