@@ -386,11 +386,12 @@ class MealieClient:
         Raises:
             MealieAPIError: If update fails
         """
-        # PATCH requires the full recipe object, not just the field to update
-        # So we GET the recipe first, modify recipe_ingredient, then PATCH back
-        recipe = self.get(f"/api/recipes/{slug}")
-        recipe["recipeIngredient"] = ingredients  # API uses camelCase in responses/requests
-        return self.patch(f"/api/recipes/{slug}", json=recipe)
+        # v1.4.7: Send minimal payload instead of full recipe to trigger proper Pydantic validation
+        # PATCH with only the field we want to update
+        minimal_payload = {
+            "recipeIngredient": ingredients  # API uses camelCase
+        }
+        return self.patch(f"/api/recipes/{slug}", json=minimal_payload)
 
 
 if __name__ == "__main__":

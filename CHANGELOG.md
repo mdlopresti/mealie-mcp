@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.7] - 2025-12-19
+
+### Fixed
+- `update_recipe_ingredients`: Send minimal PATCH payload (only recipeIngredient field) instead of full recipe object
+- This allows Pydantic validation to run properly on the recipeIngredient field during API request deserialization
+- Full recipe object bypass may have prevented field validators from executing correctly
+- Combines with v1.4.6 string approach to trigger proper CreateIngredient* object creation
+
 ## [1.4.6] - 2025-12-18
 
 ### Fixed
