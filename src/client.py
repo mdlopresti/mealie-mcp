@@ -517,17 +517,16 @@ class MealieClient:
         tag_map = {tag["name"]: tag for tag in all_tags}
 
         # Convert tag names to tag objects (with id, name, slug)
+        # Create missing tags first
         tag_objects = []
         for tag_name in tags:
             if tag_name in tag_map:
                 # Use existing tag
                 tag_objects.append(tag_map[tag_name])
             else:
-                # Tag doesn't exist - API will create it, send with name and slug only
-                tag_objects.append({
-                    "name": tag_name,
-                    "slug": tag_name.lower().replace(" ", "-")
-                })
+                # Tag doesn't exist - create it first
+                new_tag = self.create_tag(tag_name)
+                tag_objects.append(new_tag)
 
         payload = {
             "recipes": recipe_ids,
@@ -557,17 +556,16 @@ class MealieClient:
         category_map = {cat["name"]: cat for cat in all_categories}
 
         # Convert category names to category objects (with id, name, slug)
+        # Create missing categories first
         category_objects = []
         for cat_name in categories:
             if cat_name in category_map:
                 # Use existing category
                 category_objects.append(category_map[cat_name])
             else:
-                # Category doesn't exist - API will create it, send with name and slug only
-                category_objects.append({
-                    "name": cat_name,
-                    "slug": cat_name.lower().replace(" ", "-")
-                })
+                # Category doesn't exist - create it first
+                new_category = self.create_category(cat_name)
+                category_objects.append(new_category)
 
         payload = {
             "recipes": recipe_ids,
@@ -897,6 +895,14 @@ class MealieClient:
     def list_tools(self) -> list[Dict[str, Any]]:
         """List all tools."""
         return self.get("/api/organizers/tools")
+
+    def create_category(self, name: str) -> Dict[str, Any]:
+        """Create a new category."""
+        return self.post("/api/organizers/categories", json={"name": name})
+
+    def create_tag(self, name: str) -> Dict[str, Any]:
+        """Create a new tag."""
+        return self.post("/api/organizers/tags", json={"name": name})
 
     def update_category(
         self,
