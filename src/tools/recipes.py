@@ -538,22 +538,39 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - pass full parser output except read-only nested objects
+                # Add unit - only pass essential fields (id, name, labelId)
+                # IngredientUnit-Input requires both id and name
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
                     if isinstance(unit, dict):
-                        # Remove nested objects that cause validation errors
-                        clean_unit = {k: v for k, v in unit.items() if k != "label"}
+                        clean_unit = {}
+                        # Required fields for IngredientUnit-Input
+                        if "id" in unit and unit["id"]:
+                            clean_unit["id"] = unit["id"]
+                        if "name" in unit and unit["name"]:
+                            clean_unit["name"] = unit["name"]
+                        # Optional field
+                        if "labelId" in unit and unit["labelId"]:
+                            clean_unit["labelId"] = unit["labelId"]
                         mealie_ingredient["unit"] = clean_unit
                     elif unit:
                         mealie_ingredient["unit"] = {"name": str(unit)}
 
-                # Add food - pass full parser output except read-only nested objects
+                # Add food - only pass essential fields (id, name, labelId)
+                # IngredientFood-Input requires name, id is optional
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
                     if isinstance(food, dict):
-                        # Remove nested 'label' object that causes validation errors
-                        clean_food = {k: v for k, v in food.items() if k != "label"}
+                        clean_food = {}
+                        # Optional id field
+                        if "id" in food and food["id"]:
+                            clean_food["id"] = food["id"]
+                        # Required name field
+                        if "name" in food and food["name"]:
+                            clean_food["name"] = food["name"]
+                        # Optional labelId field
+                        if "labelId" in food and food["labelId"]:
+                            clean_food["labelId"] = food["labelId"]
                         mealie_ingredient["food"] = clean_food
                     elif food:
                         mealie_ingredient["food"] = {"name": str(food)}

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2025-12-18
+
+### Fixed
+- **Structured ingredient validation errors** - Use whitelist approach for unit/food fields
+- Only pass essential fields to Mealie API: id, name, labelId
+- Exclude metadata fields: createdAt, update_at, label object, aliases, etc.
+- Fixes HTTP 500 ValidationError when updating recipes with structured ingredients
+
 ## [1.3.0] - 2025-12-18
 
 ### Added
