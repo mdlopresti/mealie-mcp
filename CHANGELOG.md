@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.5] - 2025-12-18
+
+### Fixed
+- **CRITICAL: PATCH requires full recipe object** - GET recipe first, modify, then PATCH back
+- Mealie's PATCH endpoint expects complete Recipe object, not partial updates
+- Changed approach: GET → modify recipe_ingredient field → PATCH full object
+- Reverted to camelCase `recipeIngredient` (API uses camelCase in JSON)
+- Fixes HTTP 500 ValueError when updating recipes with structured ingredients
+
 ## [1.4.4] - 2025-12-18
 
 ### Fixed
