@@ -449,7 +449,23 @@ def shopping_generate_from_mealplan(
                 "end_date": end.isoformat(),
             })
 
-            if not mealplan_response or not isinstance(mealplan_response, list):
+            if not mealplan_response:
+                return json.dumps({
+                    "error": "No meal plans found for the specified date range",
+                    "start_date": start.isoformat(),
+                    "end_date": end.isoformat(),
+                }, indent=2)
+
+            # Handle paginated response
+            mealplan_entries = []
+            if isinstance(mealplan_response, dict) and "items" in mealplan_response:
+                mealplan_entries = mealplan_response["items"]
+            elif isinstance(mealplan_response, list):
+                mealplan_entries = mealplan_response
+            else:
+                mealplan_entries = [mealplan_response]
+
+            if not mealplan_entries:
                 return json.dumps({
                     "error": "No meal plans found for the specified date range",
                     "start_date": start.isoformat(),
@@ -458,7 +474,7 @@ def shopping_generate_from_mealplan(
 
             # Collect all recipe IDs
             recipe_ids = []
-            for entry in mealplan_response:
+            for entry in mealplan_entries:
                 recipe_id = entry.get("recipeId")
                 if recipe_id:
                     recipe_ids.append(recipe_id)
