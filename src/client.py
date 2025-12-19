@@ -798,15 +798,17 @@ class MealieClient:
         print(f"DEBUG: Files keys={list(files.keys())}, Data keys={list(data.keys())}", file=sys.stderr)
 
         try:
-            # Create headers without Content-Type (httpx will set multipart/form-data)
+            # Use standalone httpx.put() to avoid client's default Content-Type header
+            # httpx will automatically set Content-Type: multipart/form-data with boundary
             headers = {"Authorization": f"Bearer {self.api_token}"}
 
-            resp = self.client.put(
+            resp = httpx.put(
                 url,
                 files=files,
                 data=data,
-                headers=headers,  # Override default headers
-                timeout=self.TIMEOUT
+                headers=headers,
+                timeout=self.TIMEOUT,
+                follow_redirects=True
             )
             print(f"DEBUG: Response status={resp.status_code}", file=sys.stderr)
             resp.raise_for_status()
