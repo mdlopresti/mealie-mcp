@@ -5,9 +5,17 @@ Provides tools for managing organizers (categories, tags, tools) in Mealie.
 """
 
 import json
+import sys
+from pathlib import Path
 from typing import Optional
 
-from ..client import MealieClient, MealieAPIError
+# Handle imports for both module usage and standalone execution
+try:
+    from ..client import MealieClient, MealieAPIError
+except ImportError:
+    # Add parent directory to path for standalone execution
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from client import MealieClient, MealieAPIError
 
 
 # -----------------------------------------------------------------------------
