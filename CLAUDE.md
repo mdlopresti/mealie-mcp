@@ -134,3 +134,66 @@ for tag in sorted(by_tag.keys()):
 - Tag releases in git: `git tag v1.x.x && git push --tags`
 - Build and push Docker image with version tag
 - Update parent project's `.mcp.json` to reference new version
+
+## Deploying MCP Changes
+
+**IMPORTANT:** Code changes do NOT take effect immediately. The MCP server runs in a Docker container, so changes must go through the full deployment pipeline:
+
+### Deployment Pipeline
+
+1. **Commit changes** to the submodule:
+   ```bash
+   cd mcp/mealie
+   git add .
+   git commit -m "Description of changes"
+   ```
+
+2. **Push to remote** to trigger CI:
+   ```bash
+   git push origin main
+   ```
+
+3. **Wait for CI build** (GitHub Actions):
+   - CI automatically builds Docker image on push
+   - Check status: `gh run list --limit 1`
+   - Wait for completion (~30 seconds)
+   - Image pushed to `ghcr.io/mdlopresti/mealie-mcp:main`
+
+4. **Pull new image** in parent project:
+   - **Option A:** Restart Claude Code/session (if using `--pull=always`)
+   - **Option B:** Manual pull: `docker pull ghcr.io/mdlopresti/mealie-mcp:main`
+
+5. **Verify changes** are active:
+   - Test the modified tool/endpoint
+   - Check that new behavior works as expected
+
+### Quick Reference
+
+```bash
+# Full deployment workflow
+cd mcp/mealie
+git add . && git commit -m "fix: your changes"
+git push origin main
+
+# Wait for CI (check with gh CLI)
+gh run watch
+
+# Restart Claude Code to pull new image
+# (if .mcp.json has --pull=always)
+```
+
+### Common Pitfall
+
+❌ **Don't test immediately after committing** - Changes won't be active until the new Docker image is pulled!
+
+✅ **Always wait for CI → pull image → then test**
+
+### For Tagged Releases
+
+For version releases (e.g., v1.6.3):
+
+```bash
+git tag v1.6.3
+git push origin v1.6.3  # Triggers release CI
+# Then update parent .mcp.json to use the specific tag
+```
