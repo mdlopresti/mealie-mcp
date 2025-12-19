@@ -615,6 +615,18 @@ def recipes_update_structured_ingredients(
 
                 mealie_ingredients.append(mealie_ingredient)
 
+            # DEBUG: Print ingredients being sent
+            import sys
+            print(f"\n=== DEBUG: Ingredients being sent to Mealie ===", file=sys.stderr)
+            print(f"Count: {len(mealie_ingredients)}", file=sys.stderr)
+            for i, ing in enumerate(mealie_ingredients):
+                print(f"\nIngredient {i+1}:", file=sys.stderr)
+                print(f"  quantity: {ing.get('quantity')}", file=sys.stderr)
+                print(f"  unit: {ing.get('unit')}", file=sys.stderr)
+                print(f"  food: {ing.get('food')}", file=sys.stderr)
+                print(f"  display: {ing.get('display')}", file=sys.stderr)
+            print(f"=== END DEBUG ===\n", file=sys.stderr)
+
             # Update the recipe with structured ingredients
             updated_recipe = client.update_recipe_ingredients(slug, mealie_ingredients)
 

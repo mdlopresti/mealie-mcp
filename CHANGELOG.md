@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.10] - 2025-12-19
+
+### Added
+- Debug logging in recipes.py to show ingredients being constructed
+- Debug logging in client.py to show exact JSON being sent to Mealie PUT request
+- Logs go to stderr for visibility in Docker/MCP output
+
 ## [1.4.9] - 2025-12-19
 
 ### Fixed

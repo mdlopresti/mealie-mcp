@@ -390,6 +390,14 @@ class MealieClient:
         # Combines v1.4.5 approach with v1.4.8 ID logic
         recipe = self.get(f"/api/recipes/{slug}")
         recipe["recipeIngredient"] = ingredients
+
+        # DEBUG: Print the exact JSON being sent to Mealie
+        import sys, json
+        print(f"\n=== DEBUG: JSON being sent to Mealie PUT /api/recipes/{slug} ===", file=sys.stderr)
+        print(f"recipeIngredient field:", file=sys.stderr)
+        print(json.dumps(recipe["recipeIngredient"], indent=2), file=sys.stderr)
+        print(f"=== END DEBUG ===\n", file=sys.stderr)
+
         return self.put(f"/api/recipes/{slug}", json=recipe)
 
 
