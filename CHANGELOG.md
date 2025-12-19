@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.4] - 2025-12-19
+
+### Fixed
+- **Critical: Bulk operations missing ID validation**
+  - Fixed `mealie_recipes_bulk_tag` and `mealie_recipes_bulk_categorize` failing with "Field required: id" error
+  - Root cause: Mealie API requires all tags/categories to have IDs - can't create new ones via bulk actions
+  - Solution: Automatically create missing tags/categories before bulk assignment
+  - Bulk operations now work seamlessly with both existing and new tags/categories
+
+### Added
+- `create_tag(name)` method to MealieClient - Creates new tags on demand
+- `create_category(name)` method to MealieClient - Creates new categories on demand
+
 ## [1.6.3] - 2025-12-19
 
 ### Fixed
