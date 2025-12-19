@@ -779,7 +779,8 @@ class MealieClient:
             else:
                 extension = 'jpg'  # default fallback
 
-        # Upload to Mealie
+        # Upload to Mealie using multipart/form-data
+        # File goes in 'files', text field goes in 'data'
         files = {
             'image': (f'image.{extension}', io.BytesIO(image_data), f'image/{extension}')
         }
@@ -790,6 +791,12 @@ class MealieClient:
         endpoint = f"/api/recipes/{slug}/image"
         url = urljoin(self.base_url, endpoint)
 
+        # Debug logging
+        import sys
+        print(f"DEBUG: Uploading image to {url}", file=sys.stderr)
+        print(f"DEBUG: Extension={extension}, Image size={len(image_data)} bytes", file=sys.stderr)
+        print(f"DEBUG: Files keys={list(files.keys())}, Data keys={list(data.keys())}", file=sys.stderr)
+
         try:
             resp = self.client.put(
                 url,
@@ -797,6 +804,7 @@ class MealieClient:
                 data=data,
                 timeout=self.TIMEOUT
             )
+            print(f"DEBUG: Response status={resp.status_code}", file=sys.stderr)
             resp.raise_for_status()
             return {"success": True, "message": f"Image uploaded to recipe '{slug}'"}
         except httpx.HTTPStatusError as e:
