@@ -780,12 +780,10 @@ class MealieClient:
                 extension = 'jpg'  # default fallback
 
         # Upload to Mealie using multipart/form-data
-        # File goes in 'files', text field goes in 'data'
+        # Both image (file) and extension (text) go in the files dict
         files = {
-            'image': (f'image.{extension}', io.BytesIO(image_data), f'image/{extension}')
-        }
-        data = {
-            'extension': extension
+            'image': (f'image.{extension}', io.BytesIO(image_data), f'image/{extension}'),
+            'extension': (None, extension)  # Text field in multipart, no filename
         }
 
         endpoint = f"/api/recipes/{slug}/image"
@@ -795,7 +793,6 @@ class MealieClient:
         import sys
         print(f"DEBUG: Uploading image to {url}", file=sys.stderr)
         print(f"DEBUG: Extension={extension}, Image size={len(image_data)} bytes", file=sys.stderr)
-        print(f"DEBUG: Files keys={list(files.keys())}, Data keys={list(data.keys())}", file=sys.stderr)
 
         try:
             # Use standalone httpx.put() to avoid client's default Content-Type header
@@ -805,7 +802,6 @@ class MealieClient:
             resp = httpx.put(
                 url,
                 files=files,
-                data=data,
                 headers=headers,
                 timeout=self.TIMEOUT,
                 follow_redirects=True
