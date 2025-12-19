@@ -29,6 +29,15 @@ from tools.recipes import (
     recipes_update,
     recipes_update_structured_ingredients,
     recipes_delete,
+    recipes_duplicate,
+    recipes_update_last_made,
+    recipes_create_from_urls_bulk,
+    recipes_bulk_tag,
+    recipes_bulk_categorize,
+    recipes_bulk_delete,
+    recipes_bulk_export,
+    recipes_bulk_update_settings,
+    recipes_create_from_image,
 )
 from tools.mealplans import (
     mealplans_list,
@@ -39,6 +48,11 @@ from tools.mealplans import (
     mealplans_delete,
     mealplans_random,
     mealplans_get_by_date,
+    mealplan_rules_list,
+    mealplan_rules_get,
+    mealplan_rules_create,
+    mealplan_rules_update,
+    mealplan_rules_delete,
 )
 from tools.shopping import (
     shopping_lists_list,
@@ -52,10 +66,31 @@ from tools.shopping import (
     shopping_items_add_recipe,
     shopping_generate_from_mealplan,
     shopping_lists_clear_checked,
+    shopping_delete_recipe_from_list,
 )
 from tools.parser import (
     parser_ingredient,
     parser_ingredients_batch,
+)
+from tools.foods import (
+    foods_list,
+    foods_get,
+    foods_update,
+    foods_delete,
+    foods_merge,
+    units_list,
+    units_get,
+    units_update,
+    units_delete,
+    units_merge,
+)
+from tools.organizers import (
+    categories_update,
+    categories_delete,
+    tags_update,
+    tags_delete,
+    tools_update,
+    tools_delete,
 )
 
 # Import resources
@@ -318,6 +353,131 @@ def mealie_recipes_delete(slug: str) -> str:
     return recipes_delete(slug=slug)
 
 
+@mcp.tool()
+def mealie_recipes_duplicate(slug: str, new_name: str | None = None) -> str:
+    """Duplicate an existing recipe.
+
+    Args:
+        slug: The recipe's slug identifier to duplicate
+        new_name: Optional new name for the duplicated recipe (defaults to "Copy of {original_name}")
+
+    Returns:
+        JSON string with the newly created recipe data
+    """
+    return recipes_duplicate(slug=slug, new_name=new_name)
+
+
+@mcp.tool()
+def mealie_recipes_update_last_made(slug: str, timestamp: str | None = None) -> str:
+    """Update the last made timestamp for a recipe.
+
+    Args:
+        slug: The recipe's slug identifier
+        timestamp: Optional ISO 8601 timestamp (defaults to current time on server)
+
+    Returns:
+        JSON string with updated recipe data
+    """
+    return recipes_update_last_made(slug=slug, timestamp=timestamp)
+
+
+@mcp.tool()
+def mealie_recipes_create_from_urls_bulk(urls: list[str], include_tags: bool = False) -> str:
+    """Import multiple recipes from URLs at once.
+
+    Args:
+        urls: List of recipe URLs to import
+        include_tags: Whether to include tags from scraped recipes (default False)
+
+    Returns:
+        JSON string with import results for each URL
+    """
+    return recipes_create_from_urls_bulk(urls=urls, include_tags=include_tags)
+
+
+@mcp.tool()
+def mealie_recipes_bulk_tag(recipe_ids: list[str], tags: list[str]) -> str:
+    """Add tags to multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to tag
+        tags: List of tag names to add
+
+    Returns:
+        JSON string with bulk action results
+    """
+    return recipes_bulk_tag(recipe_ids=recipe_ids, tags=tags)
+
+
+@mcp.tool()
+def mealie_recipes_bulk_categorize(recipe_ids: list[str], categories: list[str]) -> str:
+    """Add categories to multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to categorize
+        categories: List of category names to add
+
+    Returns:
+        JSON string with bulk action results
+    """
+    return recipes_bulk_categorize(recipe_ids=recipe_ids, categories=categories)
+
+
+@mcp.tool()
+def mealie_recipes_bulk_delete(recipe_ids: list[str]) -> str:
+    """Delete multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to delete
+
+    Returns:
+        JSON string with bulk action results
+    """
+    return recipes_bulk_delete(recipe_ids=recipe_ids)
+
+
+@mcp.tool()
+def mealie_recipes_bulk_export(recipe_ids: list[str], export_format: str = "json") -> str:
+    """Export multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to export
+        export_format: Export format (json, zip, etc.)
+
+    Returns:
+        JSON string with export data
+    """
+    return recipes_bulk_export(recipe_ids=recipe_ids, export_format=export_format)
+
+
+@mcp.tool()
+def mealie_recipes_bulk_update_settings(recipe_ids: list[str], settings: dict[str, Any]) -> str:
+    """Update settings for multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to update
+        settings: Settings to update (e.g., {"public": true, "show_nutrition": false})
+
+    Returns:
+        JSON string with bulk action results
+    """
+    return recipes_bulk_update_settings(recipe_ids=recipe_ids, settings=settings)
+
+
+@mcp.tool()
+def mealie_recipes_create_from_image(image_data: str, extension: str = "jpg") -> str:
+    """Create a recipe from an image using AI (experimental).
+
+    Args:
+        image_data: Base64 encoded image data
+        extension: Image file extension (jpg, png, etc.)
+
+    Returns:
+        JSON string with created recipe data
+    """
+    return recipes_create_from_image(image_data=image_data, extension=extension)
+
+
 # -----------------------------------------------------------------------------
 # Meal Plan Tools (Phase 2)
 # -----------------------------------------------------------------------------
@@ -457,6 +617,92 @@ def mealie_mealplans_random() -> str:
         JSON string with a suggested recipe for meal planning
     """
     return mealplans_random()
+
+
+@mcp.tool()
+def mealie_mealplan_rules_list() -> str:
+    """List all meal plan rules.
+
+    Returns:
+        JSON string with list of meal plan rules
+    """
+    return mealplan_rules_list()
+
+
+@mcp.tool()
+def mealie_mealplan_rules_get(rule_id: str) -> str:
+    """Get a specific meal plan rule by ID.
+
+    Args:
+        rule_id: The meal plan rule ID
+
+    Returns:
+        JSON string with rule details
+    """
+    return mealplan_rules_get(rule_id=rule_id)
+
+
+@mcp.tool()
+def mealie_mealplan_rules_create(
+    name: str,
+    entry_type: str,
+    tags: list[str] | None = None,
+    categories: list[str] | None = None
+) -> str:
+    """Create a new meal plan rule.
+
+    Args:
+        name: Rule name
+        entry_type: Entry type (breakfast, lunch, dinner, side, snack)
+        tags: List of tag names to filter by
+        categories: List of category names to filter by
+
+    Returns:
+        JSON string with created rule details
+    """
+    return mealplan_rules_create(name=name, entry_type=entry_type, tags=tags, categories=categories)
+
+
+@mcp.tool()
+def mealie_mealplan_rules_update(
+    rule_id: str,
+    name: str | None = None,
+    entry_type: str | None = None,
+    tags: list[str] | None = None,
+    categories: list[str] | None = None
+) -> str:
+    """Update an existing meal plan rule.
+
+    Args:
+        rule_id: The meal plan rule ID
+        name: New rule name
+        entry_type: New entry type (breakfast, lunch, dinner, side, snack)
+        tags: New list of tag names to filter by
+        categories: New list of category names to filter by
+
+    Returns:
+        JSON string with updated rule details
+    """
+    return mealplan_rules_update(
+        rule_id=rule_id,
+        name=name,
+        entry_type=entry_type,
+        tags=tags,
+        categories=categories
+    )
+
+
+@mcp.tool()
+def mealie_mealplan_rules_delete(rule_id: str) -> str:
+    """Delete a meal plan rule.
+
+    Args:
+        rule_id: The meal plan rule ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return mealplan_rules_delete(rule_id=rule_id)
 
 
 # -----------------------------------------------------------------------------
@@ -647,6 +893,274 @@ def mealie_shopping_clear_checked(list_id: str) -> str:
         JSON string with count of removed items
     """
     return shopping_lists_clear_checked(list_id=list_id)
+
+
+@mcp.tool()
+def mealie_shopping_delete_recipe_from_list(item_id: str, recipe_id: str) -> str:
+    """Remove recipe ingredients from a shopping list.
+
+    Args:
+        item_id: The shopping list item ID
+        recipe_id: The recipe ID whose ingredients to remove
+
+    Returns:
+        JSON string with removal results
+    """
+    return shopping_delete_recipe_from_list(item_id=item_id, recipe_id=recipe_id)
+
+
+# -----------------------------------------------------------------------------
+# Foods & Units Management Tools
+# -----------------------------------------------------------------------------
+
+@mcp.tool()
+def mealie_foods_list(page: int = 1, per_page: int = 50) -> str:
+    """List all foods with pagination.
+
+    Args:
+        page: Page number (1-indexed)
+        per_page: Number of foods per page
+
+    Returns:
+        JSON string with paginated food list
+    """
+    return foods_list(page=page, per_page=per_page)
+
+
+@mcp.tool()
+def mealie_foods_get(food_id: str) -> str:
+    """Get a specific food by ID.
+
+    Args:
+        food_id: The food's ID
+
+    Returns:
+        JSON string with food details
+    """
+    return foods_get(food_id=food_id)
+
+
+@mcp.tool()
+def mealie_foods_update(
+    food_id: str,
+    name: str | None = None,
+    description: str | None = None,
+    label: str | None = None
+) -> str:
+    """Update an existing food.
+
+    Args:
+        food_id: The food's ID
+        name: New name for the food
+        description: New description
+        label: New label
+
+    Returns:
+        JSON string with updated food details
+    """
+    return foods_update(food_id=food_id, name=name, description=description, label=label)
+
+
+@mcp.tool()
+def mealie_foods_delete(food_id: str) -> str:
+    """Delete a food.
+
+    Args:
+        food_id: The food's ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return foods_delete(food_id=food_id)
+
+
+@mcp.tool()
+def mealie_foods_merge(from_food_id: str, to_food_id: str) -> str:
+    """Merge one food into another (combines usage across recipes).
+
+    Args:
+        from_food_id: Source food ID (will be deleted)
+        to_food_id: Target food ID (will absorb all references)
+
+    Returns:
+        JSON string with merge results
+    """
+    return foods_merge(from_food_id=from_food_id, to_food_id=to_food_id)
+
+
+@mcp.tool()
+def mealie_units_list(page: int = 1, per_page: int = 50) -> str:
+    """List all units with pagination.
+
+    Args:
+        page: Page number (1-indexed)
+        per_page: Number of units per page
+
+    Returns:
+        JSON string with paginated unit list
+    """
+    return units_list(page=page, per_page=per_page)
+
+
+@mcp.tool()
+def mealie_units_get(unit_id: str) -> str:
+    """Get a specific unit by ID.
+
+    Args:
+        unit_id: The unit's ID
+
+    Returns:
+        JSON string with unit details
+    """
+    return units_get(unit_id=unit_id)
+
+
+@mcp.tool()
+def mealie_units_update(
+    unit_id: str,
+    name: str | None = None,
+    description: str | None = None,
+    abbreviation: str | None = None
+) -> str:
+    """Update an existing unit.
+
+    Args:
+        unit_id: The unit's ID
+        name: New name for the unit
+        description: New description
+        abbreviation: New abbreviation
+
+    Returns:
+        JSON string with updated unit details
+    """
+    return units_update(unit_id=unit_id, name=name, description=description, abbreviation=abbreviation)
+
+
+@mcp.tool()
+def mealie_units_delete(unit_id: str) -> str:
+    """Delete a unit.
+
+    Args:
+        unit_id: The unit's ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return units_delete(unit_id=unit_id)
+
+
+@mcp.tool()
+def mealie_units_merge(from_unit_id: str, to_unit_id: str) -> str:
+    """Merge one unit into another (combines usage across recipes).
+
+    Args:
+        from_unit_id: Source unit ID (will be deleted)
+        to_unit_id: Target unit ID (will absorb all references)
+
+    Returns:
+        JSON string with merge results
+    """
+    return units_merge(from_unit_id=from_unit_id, to_unit_id=to_unit_id)
+
+
+# -----------------------------------------------------------------------------
+# Organizers Management Tools (Categories, Tags, Tools)
+# -----------------------------------------------------------------------------
+
+@mcp.tool()
+def mealie_categories_update(
+    category_id: str,
+    name: str | None = None,
+    slug: str | None = None
+) -> str:
+    """Update a category.
+
+    Args:
+        category_id: The category's ID
+        name: New name for the category
+        slug: New slug for the category
+
+    Returns:
+        JSON string with updated category details
+    """
+    return categories_update(category_id=category_id, name=name, slug=slug)
+
+
+@mcp.tool()
+def mealie_categories_delete(category_id: str) -> str:
+    """Delete a category.
+
+    Args:
+        category_id: The category's ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return categories_delete(category_id=category_id)
+
+
+@mcp.tool()
+def mealie_tags_update(
+    tag_id: str,
+    name: str | None = None,
+    slug: str | None = None
+) -> str:
+    """Update a tag.
+
+    Args:
+        tag_id: The tag's ID
+        name: New name for the tag
+        slug: New slug for the tag
+
+    Returns:
+        JSON string with updated tag details
+    """
+    return tags_update(tag_id=tag_id, name=name, slug=slug)
+
+
+@mcp.tool()
+def mealie_tags_delete(tag_id: str) -> str:
+    """Delete a tag.
+
+    Args:
+        tag_id: The tag's ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return tags_delete(tag_id=tag_id)
+
+
+@mcp.tool()
+def mealie_tools_update(
+    tool_id: str,
+    name: str | None = None,
+    slug: str | None = None
+) -> str:
+    """Update a tool.
+
+    Args:
+        tool_id: The tool's ID
+        name: New name for the tool
+        slug: New slug for the tool
+
+    Returns:
+        JSON string with updated tool details
+    """
+    return tools_update(tool_id=tool_id, name=name, slug=slug)
+
+
+@mcp.tool()
+def mealie_tools_delete(tool_id: str) -> str:
+    """Delete a tool.
+
+    Args:
+        tool_id: The tool's ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return tools_delete(tool_id=tool_id)
 
 
 # -----------------------------------------------------------------------------

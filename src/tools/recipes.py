@@ -744,6 +744,322 @@ def recipes_delete(slug: str) -> str:
         return json.dumps(error_result, indent=2)
 
 
+def recipes_duplicate(slug: str, new_name: Optional[str] = None) -> str:
+    """Duplicate an existing recipe.
+
+    Args:
+        slug: The recipe's slug identifier to duplicate
+        new_name: Optional new name for the duplicated recipe (defaults to "Copy of {original_name}")
+
+    Returns:
+        JSON string with the newly created recipe data
+    """
+    try:
+        with MealieClient() as client:
+            recipe = client.duplicate_recipe(slug, new_name)
+
+            result = {
+                "success": True,
+                "message": f"Recipe duplicated successfully",
+                "recipe": {
+                    "name": recipe.get("name"),
+                    "slug": recipe.get("slug"),
+                    "id": recipe.get("id")
+                }
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_update_last_made(slug: str, timestamp: Optional[str] = None) -> str:
+    """Update the last made timestamp for a recipe.
+
+    Args:
+        slug: The recipe's slug identifier
+        timestamp: Optional ISO 8601 timestamp (defaults to current time on server)
+
+    Returns:
+        JSON string with updated recipe data
+    """
+    try:
+        with MealieClient() as client:
+            recipe = client.update_recipe_last_made(slug, timestamp)
+
+            result = {
+                "success": True,
+                "message": f"Recipe '{recipe.get('name')}' last made timestamp updated",
+                "last_made": recipe.get("lastMade")
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_create_from_urls_bulk(urls: list[str], include_tags: bool = False) -> str:
+    """Import multiple recipes from URLs at once.
+
+    Args:
+        urls: List of recipe URLs to import
+        include_tags: Whether to include tags from scraped recipes (default False)
+
+    Returns:
+        JSON string with import results for each URL
+    """
+    try:
+        with MealieClient() as client:
+            results = client.create_recipes_from_urls_bulk(urls, include_tags)
+
+            return json.dumps({
+                "success": True,
+                "message": f"Bulk import initiated for {len(urls)} URLs",
+                "results": results
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_bulk_tag(recipe_ids: list[str], tags: list[str]) -> str:
+    """Add tags to multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to tag
+        tags: List of tag names to add
+
+    Returns:
+        JSON string with bulk action results
+    """
+    try:
+        with MealieClient() as client:
+            results = client.bulk_tag_recipes(recipe_ids, tags)
+
+            return json.dumps({
+                "success": True,
+                "message": f"Tagged {len(recipe_ids)} recipes with {len(tags)} tag(s)",
+                "results": results
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_bulk_categorize(recipe_ids: list[str], categories: list[str]) -> str:
+    """Add categories to multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to categorize
+        categories: List of category names to add
+
+    Returns:
+        JSON string with bulk action results
+    """
+    try:
+        with MealieClient() as client:
+            results = client.bulk_categorize_recipes(recipe_ids, categories)
+
+            return json.dumps({
+                "success": True,
+                "message": f"Categorized {len(recipe_ids)} recipes with {len(categories)} category(ies)",
+                "results": results
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_bulk_delete(recipe_ids: list[str]) -> str:
+    """Delete multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to delete
+
+    Returns:
+        JSON string with bulk action results
+    """
+    try:
+        with MealieClient() as client:
+            results = client.bulk_delete_recipes(recipe_ids)
+
+            return json.dumps({
+                "success": True,
+                "message": f"Deleted {len(recipe_ids)} recipe(s)",
+                "results": results
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_bulk_export(recipe_ids: list[str], export_format: str = "json") -> str:
+    """Export multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to export
+        export_format: Export format (json, zip, etc.)
+
+    Returns:
+        JSON string with export data
+    """
+    try:
+        with MealieClient() as client:
+            results = client.bulk_export_recipes(recipe_ids, export_format)
+
+            return json.dumps({
+                "success": True,
+                "message": f"Exported {len(recipe_ids)} recipe(s) as {export_format}",
+                "data": results
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_bulk_update_settings(recipe_ids: list[str], settings: dict[str, Any]) -> str:
+    """Update settings for multiple recipes at once.
+
+    Args:
+        recipe_ids: List of recipe IDs to update
+        settings: Settings to update (e.g., {"public": true, "show_nutrition": false})
+
+    Returns:
+        JSON string with bulk action results
+    """
+    try:
+        with MealieClient() as client:
+            results = client.bulk_update_settings(recipe_ids, settings)
+
+            return json.dumps({
+                "success": True,
+                "message": f"Updated settings for {len(recipe_ids)} recipe(s)",
+                "results": results
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_create_from_image(image_data: str, extension: str = "jpg") -> str:
+    """Create a recipe from an image using AI (experimental).
+
+    Args:
+        image_data: Base64 encoded image data
+        extension: Image file extension (jpg, png, etc.)
+
+    Returns:
+        JSON string with created recipe data
+    """
+    try:
+        with MealieClient() as client:
+            recipe = client.create_recipe_from_image(image_data, extension)
+
+            result = {
+                "success": True,
+                "message": "Recipe created from image successfully",
+                "recipe": {
+                    "name": recipe.get("name"),
+                    "slug": recipe.get("slug"),
+                    "id": recipe.get("id")
+                }
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 if __name__ == "__main__":
     """
     Test the recipe tools against the live Mealie instance.

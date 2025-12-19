@@ -610,6 +610,36 @@ def shopping_lists_clear_checked(list_id: str) -> str:
         return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
 
 
+def shopping_delete_recipe_from_list(item_id: str, recipe_id: str) -> str:
+    """Remove recipe ingredients from a shopping list.
+
+    Args:
+        item_id: The shopping list item ID
+        recipe_id: The recipe ID whose ingredients to remove
+
+    Returns:
+        JSON string with removal results
+    """
+    try:
+        with MealieClient() as client:
+            result = client.delete_recipe_from_shopping_list(item_id, recipe_id)
+
+            return json.dumps({
+                "success": True,
+                "message": "Recipe ingredients removed from shopping list",
+                "result": result
+            }, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
 if __name__ == "__main__":
     """
     Test the shopping list tools against the live Mealie instance.

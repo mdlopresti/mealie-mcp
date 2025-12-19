@@ -430,6 +430,395 @@ class MealieClient:
 
         return self.patch(f"/api/recipes/{slug}", json=payload)
 
+    def duplicate_recipe(self, slug: str, new_name: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Duplicate an existing recipe.
+
+        Args:
+            slug: The recipe's slug identifier to duplicate
+            new_name: Optional new name for the duplicated recipe (defaults to "Copy of {original_name}")
+
+        Returns:
+            The newly created recipe data
+
+        Raises:
+            MealieAPIError: If duplication fails
+        """
+        payload = {}
+        if new_name:
+            payload["name"] = new_name
+
+        return self.post(f"/api/recipes/{slug}/duplicate", json=payload if payload else None)
+
+    def update_recipe_last_made(self, slug: str, timestamp: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Update the last made timestamp for a recipe.
+
+        Args:
+            slug: The recipe's slug identifier
+            timestamp: Optional ISO 8601 timestamp (defaults to current time on server)
+
+        Returns:
+            Updated recipe data
+
+        Raises:
+            MealieAPIError: If update fails
+        """
+        payload = {}
+        if timestamp:
+            payload["timestamp"] = timestamp
+
+        return self.patch(f"/api/recipes/{slug}/last-made", json=payload if payload else None)
+
+    def create_recipes_from_urls_bulk(self, urls: list[str], include_tags: bool = False) -> Dict[str, Any]:
+        """
+        Import multiple recipes from URLs at once.
+
+        Args:
+            urls: List of recipe URLs to import
+            include_tags: Whether to include tags from scraped recipes (default False)
+
+        Returns:
+            Import results with status for each URL
+
+        Raises:
+            MealieAPIError: If import fails
+        """
+        payload = {
+            "urls": urls,
+            "include_tags": include_tags
+        }
+
+        return self.post("/api/recipes/create/url/bulk", json=payload)
+
+    def bulk_tag_recipes(self, recipe_ids: list[str], tags: list[str]) -> Dict[str, Any]:
+        """
+        Add tags to multiple recipes at once.
+
+        Args:
+            recipe_ids: List of recipe IDs to tag
+            tags: List of tag names to add
+
+        Returns:
+            Bulk action results
+
+        Raises:
+            MealieAPIError: If bulk action fails
+        """
+        payload = {
+            "recipes": recipe_ids,
+            "tags": tags
+        }
+
+        return self.post("/api/recipes/bulk-actions/tag", json=payload)
+
+    def bulk_categorize_recipes(self, recipe_ids: list[str], categories: list[str]) -> Dict[str, Any]:
+        """
+        Add categories to multiple recipes at once.
+
+        Args:
+            recipe_ids: List of recipe IDs to categorize
+            categories: List of category names to add
+
+        Returns:
+            Bulk action results
+
+        Raises:
+            MealieAPIError: If bulk action fails
+        """
+        payload = {
+            "recipes": recipe_ids,
+            "categories": categories
+        }
+
+        return self.post("/api/recipes/bulk-actions/categorize", json=payload)
+
+    def bulk_delete_recipes(self, recipe_ids: list[str]) -> Dict[str, Any]:
+        """
+        Delete multiple recipes at once.
+
+        Args:
+            recipe_ids: List of recipe IDs to delete
+
+        Returns:
+            Bulk action results
+
+        Raises:
+            MealieAPIError: If bulk action fails
+        """
+        payload = {
+            "recipes": recipe_ids
+        }
+
+        return self.post("/api/recipes/bulk-actions/delete", json=payload)
+
+    def bulk_export_recipes(self, recipe_ids: list[str], export_format: str = "json") -> Any:
+        """
+        Export multiple recipes at once.
+
+        Args:
+            recipe_ids: List of recipe IDs to export
+            export_format: Export format (json, zip, etc.)
+
+        Returns:
+            Export data or file
+
+        Raises:
+            MealieAPIError: If bulk action fails
+        """
+        payload = {
+            "recipes": recipe_ids,
+            "format": export_format
+        }
+
+        return self.post("/api/recipes/bulk-actions/export", json=payload)
+
+    def bulk_update_settings(self, recipe_ids: list[str], settings: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Update settings for multiple recipes at once.
+
+        Args:
+            recipe_ids: List of recipe IDs to update
+            settings: Settings to update (e.g., {"public": true, "show_nutrition": false})
+
+        Returns:
+            Bulk action results
+
+        Raises:
+            MealieAPIError: If bulk action fails
+        """
+        payload = {
+            "recipes": recipe_ids,
+            "settings": settings
+        }
+
+        return self.post("/api/recipes/bulk-actions/settings", json=payload)
+
+    # -------------------------------------------------------------------------
+    # Meal Plan Rules
+    # -------------------------------------------------------------------------
+
+    def list_mealplan_rules(self) -> list[Dict[str, Any]]:
+        """List all meal plan rules."""
+        return self.get("/api/households/mealplans/rules")
+
+    def get_mealplan_rule(self, rule_id: str) -> Dict[str, Any]:
+        """Get a specific meal plan rule by ID."""
+        return self.get(f"/api/households/mealplans/rules/{rule_id}")
+
+    def create_mealplan_rule(
+        self,
+        name: str,
+        entry_type: str,
+        tags: Optional[list[str]] = None,
+        categories: Optional[list[str]] = None,
+    ) -> Dict[str, Any]:
+        """Create a new meal plan rule."""
+        payload = {
+            "name": name,
+            "entryType": entry_type,
+            "tags": tags or [],
+            "categories": categories or []
+        }
+        return self.post("/api/households/mealplans/rules", json=payload)
+
+    def update_mealplan_rule(
+        self,
+        rule_id: str,
+        name: Optional[str] = None,
+        entry_type: Optional[str] = None,
+        tags: Optional[list[str]] = None,
+        categories: Optional[list[str]] = None,
+    ) -> Dict[str, Any]:
+        """Update an existing meal plan rule."""
+        payload = {}
+        if name is not None:
+            payload["name"] = name
+        if entry_type is not None:
+            payload["entryType"] = entry_type
+        if tags is not None:
+            payload["tags"] = tags
+        if categories is not None:
+            payload["categories"] = categories
+
+        return self.patch(f"/api/households/mealplans/rules/{rule_id}", json=payload)
+
+    def delete_mealplan_rule(self, rule_id: str) -> None:
+        """Delete a meal plan rule."""
+        return self.delete(f"/api/households/mealplans/rules/{rule_id}")
+
+    # -------------------------------------------------------------------------
+    # Shopping List Recipe Operations
+    # -------------------------------------------------------------------------
+
+    def delete_recipe_from_shopping_list(self, item_id: str, recipe_id: str) -> Dict[str, Any]:
+        """Remove recipe ingredients from shopping list."""
+        return self.post(f"/api/households/shopping/lists/{item_id}/recipe/{recipe_id}/delete")
+
+    # -------------------------------------------------------------------------
+    # Foods & Units Management
+    # -------------------------------------------------------------------------
+
+    def list_foods(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
+        """List all foods with pagination."""
+        params = {"page": page, "perPage": per_page}
+        return self.get("/api/foods", params=params)
+
+    def get_food(self, food_id: str) -> Dict[str, Any]:
+        """Get a specific food by ID."""
+        return self.get(f"/api/foods/{food_id}")
+
+    def update_food(
+        self,
+        food_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        label: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update an existing food."""
+        payload = {}
+        if name is not None:
+            payload["name"] = name
+        if description is not None:
+            payload["description"] = description
+        if label is not None:
+            payload["label"] = label
+
+        return self.patch(f"/api/foods/{food_id}", json=payload)
+
+    def delete_food(self, food_id: str) -> None:
+        """Delete a food."""
+        return self.delete(f"/api/foods/{food_id}")
+
+    def merge_foods(self, from_food_id: str, to_food_id: str) -> Dict[str, Any]:
+        """Merge one food into another."""
+        payload = {
+            "fromFood": from_food_id,
+            "toFood": to_food_id
+        }
+        return self.post("/api/foods/merge", json=payload)
+
+    def list_units(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
+        """List all units with pagination."""
+        params = {"page": page, "perPage": per_page}
+        return self.get("/api/units", params=params)
+
+    def get_unit(self, unit_id: str) -> Dict[str, Any]:
+        """Get a specific unit by ID."""
+        return self.get(f"/api/units/{unit_id}")
+
+    def update_unit(
+        self,
+        unit_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        abbreviation: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update an existing unit."""
+        payload = {}
+        if name is not None:
+            payload["name"] = name
+        if description is not None:
+            payload["description"] = description
+        if abbreviation is not None:
+            payload["abbreviation"] = abbreviation
+
+        return self.patch(f"/api/units/{unit_id}", json=payload)
+
+    def delete_unit(self, unit_id: str) -> None:
+        """Delete a unit."""
+        return self.delete(f"/api/units/{unit_id}")
+
+    def merge_units(self, from_unit_id: str, to_unit_id: str) -> Dict[str, Any]:
+        """Merge one unit into another."""
+        payload = {
+            "fromUnit": from_unit_id,
+            "toUnit": to_unit_id
+        }
+        return self.post("/api/units/merge", json=payload)
+
+    # -------------------------------------------------------------------------
+    # Recipe from Image
+    # -------------------------------------------------------------------------
+
+    def create_recipe_from_image(self, image_data: str, extension: str = "jpg") -> Dict[str, Any]:
+        """
+        Create recipe from image using AI (experimental).
+
+        Args:
+            image_data: Base64 encoded image data
+            extension: Image file extension (jpg, png, etc.)
+
+        Returns:
+            Created recipe data
+        """
+        payload = {
+            "image": image_data,
+            "extension": extension
+        }
+        return self.post("/api/recipes/create/image", json=payload)
+
+    # -------------------------------------------------------------------------
+    # Organizers Management (Categories, Tags, Tools)
+    # -------------------------------------------------------------------------
+
+    def update_category(
+        self,
+        category_id: str,
+        name: Optional[str] = None,
+        slug: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update a category."""
+        payload = {}
+        if name is not None:
+            payload["name"] = name
+        if slug is not None:
+            payload["slug"] = slug
+
+        return self.patch(f"/api/organizers/categories/{category_id}", json=payload)
+
+    def delete_category(self, category_id: str) -> None:
+        """Delete a category."""
+        return self.delete(f"/api/organizers/categories/{category_id}")
+
+    def update_tag(
+        self,
+        tag_id: str,
+        name: Optional[str] = None,
+        slug: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update a tag."""
+        payload = {}
+        if name is not None:
+            payload["name"] = name
+        if slug is not None:
+            payload["slug"] = slug
+
+        return self.patch(f"/api/organizers/tags/{tag_id}", json=payload)
+
+    def delete_tag(self, tag_id: str) -> None:
+        """Delete a tag."""
+        return self.delete(f"/api/organizers/tags/{tag_id}")
+
+    def update_tool(
+        self,
+        tool_id: str,
+        name: Optional[str] = None,
+        slug: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update a tool."""
+        payload = {}
+        if name is not None:
+            payload["name"] = name
+        if slug is not None:
+            payload["slug"] = slug
+
+        return self.patch(f"/api/organizers/tools/{tool_id}", json=payload)
+
+    def delete_tool(self, tool_id: str) -> None:
+        """Delete a tool."""
+        return self.delete(f"/api/organizers/tools/{tool_id}")
+
 
 if __name__ == "__main__":
     """

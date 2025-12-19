@@ -5,6 +5,91 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-12-19
+
+### Added
+
+#### High-Priority Recipe Management Features
+- **Recipe Duplication** - `mealie_recipes_duplicate(slug, new_name?)`
+  - Create variations of existing recipes
+  - Useful for meal prep adaptations and recipe experimentation
+
+- **Last Made Tracking** - `mealie_recipes_update_last_made(slug, timestamp?)`
+  - Track when recipes were last prepared
+  - Enables meal rotation planning and freshness tracking
+
+- **Bulk URL Import** - `mealie_recipes_create_from_urls_bulk(urls, include_tags)`
+  - Import multiple recipes from URLs at once
+  - More efficient than sequential one-at-a-time imports
+
+- **Bulk Recipe Actions** - Batch operations for recipe management:
+  - `mealie_recipes_bulk_tag(recipe_ids, tags)` - Add tags to multiple recipes
+  - `mealie_recipes_bulk_categorize(recipe_ids, categories)` - Categorize multiple recipes
+  - `mealie_recipes_bulk_delete(recipe_ids)` - Delete multiple recipes at once
+  - `mealie_recipes_bulk_export(recipe_ids, format)` - Export recipe batches
+  - `mealie_recipes_bulk_update_settings(recipe_ids, settings)` - Update settings across recipes
+
+#### Meal Plan Rules (Automated Planning)
+- **Full CRUD for Meal Plan Rules** - `/api/households/mealplans/rules` endpoints:
+  - `mealie_mealplan_rules_list()` - List all meal planning rules
+  - `mealie_mealplan_rules_get(rule_id)` - Get specific rule details
+  - `mealie_mealplan_rules_create(name, entry_type, tags?, categories?)` - Create automation rules
+  - `mealie_mealplan_rules_update(rule_id, ...)` - Update existing rules
+  - `mealie_mealplan_rules_delete(rule_id)` - Delete rules
+- Enables automated meal plan generation with preference-based filtering
+
+#### Foods & Units Management
+- **Foods Management** - Complete CRUD operations for ingredient database:
+  - `mealie_foods_list(page, per_page)` - Browse all foods with pagination
+  - `mealie_foods_get(food_id)` - Get food details
+  - `mealie_foods_update(food_id, name?, description?, label?)` - Update food entries
+  - `mealie_foods_delete(food_id)` - Delete foods
+  - `mealie_foods_merge(from_food_id, to_food_id)` - Merge duplicate foods across recipes
+
+- **Units Management** - Complete CRUD operations for measurement units:
+  - `mealie_units_list(page, per_page)` - Browse all units with pagination
+  - `mealie_units_get(unit_id)` - Get unit details
+  - `mealie_units_update(unit_id, name?, description?, abbreviation?)` - Update units
+  - `mealie_units_delete(unit_id)` - Delete units
+  - `mealie_units_merge(from_unit_id, to_unit_id)` - Merge duplicate units across recipes
+
+#### Organizers Management (Categories, Tags, Tools)
+- **Categories Management**:
+  - `mealie_categories_update(category_id, name?, slug?)` - Update category details
+  - `mealie_categories_delete(category_id)` - Delete categories
+
+- **Tags Management**:
+  - `mealie_tags_update(tag_id, name?, slug?)` - Update tag details
+  - `mealie_tags_delete(tag_id)` - Delete tags
+
+- **Tools Management**:
+  - `mealie_tools_update(tool_id, name?, slug?)` - Update cooking tool details
+  - `mealie_tools_delete(tool_id)` - Delete tools
+
+#### Shopping List Enhancements
+- **Recipe Ingredient Removal** - `mealie_shopping_delete_recipe_from_list(item_id, recipe_id)`
+  - Remove specific recipe's ingredients from shopping list
+  - Better control over shopping list composition
+
+#### Experimental Features
+- **Recipe from Image (AI)** - `mealie_recipes_create_from_image(image_data, extension)`
+  - AI-generated recipes from photos (experimental)
+  - Requires Mealie instance with AI features enabled
+
+### Technical Implementation
+- Added 46 new MCP tools across 9 feature categories
+- Created new tool modules: `tools/foods.py`, `tools/organizers.py`
+- Extended `tools/recipes.py`, `tools/mealplans.py`, `tools/shopping.py`
+- Added 24 new client methods to `client.py`
+- Comprehensive error handling and validation across all new endpoints
+
+### Use Cases Enabled
+- **Data Quality**: Merge duplicate foods/units, clean up organizers
+- **Bulk Operations**: Tag/categorize/delete/export recipes in batches
+- **Automation**: Set up meal planning rules for automated suggestions
+- **Workflow Efficiency**: Duplicate recipes for variations, track last made dates
+- **Import Scale**: Import multiple recipe URLs simultaneously
+
 ## [1.5.0] - 2025-12-19
 
 ### Added

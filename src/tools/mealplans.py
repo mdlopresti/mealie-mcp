@@ -478,6 +478,159 @@ def mealplans_get_by_date(meal_date: str) -> str:
         return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
 
 
+# -----------------------------------------------------------------------------
+# Meal Plan Rules
+# -----------------------------------------------------------------------------
+
+def mealplan_rules_list() -> str:
+    """List all meal plan rules.
+
+    Returns:
+        JSON string with list of meal plan rules
+    """
+    try:
+        with MealieClient() as client:
+            rules = client.list_mealplan_rules()
+            return json.dumps({
+                "success": True,
+                "rules": rules
+            }, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
+def mealplan_rules_get(rule_id: str) -> str:
+    """Get a specific meal plan rule by ID.
+
+    Args:
+        rule_id: The meal plan rule ID
+
+    Returns:
+        JSON string with rule details
+    """
+    try:
+        with MealieClient() as client:
+            rule = client.get_mealplan_rule(rule_id)
+            return json.dumps(rule, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
+def mealplan_rules_create(
+    name: str,
+    entry_type: str,
+    tags: Optional[list[str]] = None,
+    categories: Optional[list[str]] = None
+) -> str:
+    """Create a new meal plan rule.
+
+    Args:
+        name: Rule name
+        entry_type: Entry type (breakfast, lunch, dinner, side, snack)
+        tags: List of tag names to filter by
+        categories: List of category names to filter by
+
+    Returns:
+        JSON string with created rule details
+    """
+    try:
+        with MealieClient() as client:
+            rule = client.create_mealplan_rule(name, entry_type, tags, categories)
+            return json.dumps({
+                "success": True,
+                "message": "Meal plan rule created successfully",
+                "rule": rule
+            }, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
+def mealplan_rules_update(
+    rule_id: str,
+    name: Optional[str] = None,
+    entry_type: Optional[str] = None,
+    tags: Optional[list[str]] = None,
+    categories: Optional[list[str]] = None
+) -> str:
+    """Update an existing meal plan rule.
+
+    Args:
+        rule_id: The meal plan rule ID
+        name: New rule name
+        entry_type: New entry type (breakfast, lunch, dinner, side, snack)
+        tags: New list of tag names to filter by
+        categories: New list of category names to filter by
+
+    Returns:
+        JSON string with updated rule details
+    """
+    try:
+        with MealieClient() as client:
+            rule = client.update_mealplan_rule(rule_id, name, entry_type, tags, categories)
+            return json.dumps({
+                "success": True,
+                "message": "Meal plan rule updated successfully",
+                "rule": rule
+            }, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
+def mealplan_rules_delete(rule_id: str) -> str:
+    """Delete a meal plan rule.
+
+    Args:
+        rule_id: The meal plan rule ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    try:
+        with MealieClient() as client:
+            client.delete_mealplan_rule(rule_id)
+            return json.dumps({
+                "success": True,
+                "message": "Meal plan rule deleted successfully"
+            }, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
 if __name__ == "__main__":
     """
     Test the meal plan tools against the live Mealie instance.
