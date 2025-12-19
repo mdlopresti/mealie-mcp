@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2025-12-18
+
+### Fixed
+- **Structured ingredient validation errors** - Use CreateIngredient* schema (no id field)
+- Drop id field from unit/food objects to use CreateIngredientUnit/CreateIngredientFood schema
+- Avoids IngredientUnit/IngredientFood validation which requires read-only fields (created_at, updated_at, label)
+- Mealie lookups existing units/foods by name instead of id
+- Fixes HTTP 500 ValueError when updating recipes with structured ingredients
+
 ## [1.4.2] - 2025-12-18
 
 ### Fixed

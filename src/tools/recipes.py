@@ -538,39 +538,32 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - only pass essential fields (id, name, labelId)
-                # IngredientUnit-Input requires both id and name
+                # Add unit - use CreateIngredientUnit schema (name only, no id)
+                # This avoids IngredientUnit validation which requires read-only fields
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
                     if isinstance(unit, dict):
-                        clean_unit = {}
-                        # Required fields for IngredientUnit-Input
-                        if "id" in unit and unit["id"]:
-                            clean_unit["id"] = unit["id"]
+                        # Only send name field - let Mealie look up existing units by name
+                        # Sending id causes Pydantic to validate as IngredientUnit (requires created_at, updated_at)
+                        # Instead we use CreateIngredientUnit (just name) and Mealie will match by name
                         if "name" in unit and unit["name"]:
-                            clean_unit["name"] = unit["name"]
-                        # Optional field
-                        if "labelId" in unit and unit["labelId"]:
-                            clean_unit["labelId"] = unit["labelId"]
-                        mealie_ingredient["unit"] = clean_unit
+                            mealie_ingredient["unit"] = {"name": unit["name"]}
                     elif unit:
                         mealie_ingredient["unit"] = {"name": str(unit)}
 
-                # Add food - only pass essential fields (id, name, labelId)
-                # IngredientFood-Input requires name, id is optional
+                # Add food - use CreateIngredientFood schema (name + labelId, no id)
+                # This avoids IngredientFood validation which requires read-only fields
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
                     if isinstance(food, dict):
+                        # Only send name and labelId - let Mealie look up existing foods by name
+                        # Sending id causes Pydantic to validate as IngredientFood (requires created_at, updated_at, label)
+                        # Instead we use CreateIngredientFood (name + labelId) and Mealie will match by name
                         clean_food = {}
-                        # Optional id field
-                        if "id" in food and food["id"]:
-                            clean_food["id"] = food["id"]
-                        # Required name field
                         if "name" in food and food["name"]:
                             clean_food["name"] = food["name"]
-                        # Optional labelId field
                         if "labelId" in food and food["labelId"]:
-                            clean_food["labelId"] = food["labelId"]
+                            clean_food["label_id"] = food["labelId"]  # Note: snake_case for Pydantic
                         mealie_ingredient["food"] = clean_food
                     elif food:
                         mealie_ingredient["food"] = {"name": str(food)}
