@@ -538,17 +538,18 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - v1.4.8: Handle existing vs new units differently
+                # Add unit - v1.4.11: More defensive null/None handling for IDs
                 # If unit has ID (exists in DB): send minimal dict with id/name
                 # If unit has no ID (new): send just name string for Pydantic validator to create it
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
                     if isinstance(unit, dict):
-                        # Check if this unit already exists (has an ID)
-                        if "id" in unit and unit["id"]:
+                        # Check if this unit already exists (has an ID that's not None/null/empty)
+                        unit_id = unit.get("id")
+                        if unit_id is not None and unit_id != "" and unit_id:
                             # Existing unit - send minimal dict with ID
                             mealie_ingredient["unit"] = {
-                                "id": unit["id"],
+                                "id": unit_id,
                                 "name": unit["name"]
                             }
                         elif "name" in unit and unit["name"]:
@@ -557,17 +558,18 @@ def recipes_update_structured_ingredients(
                     elif unit:
                         mealie_ingredient["unit"] = str(unit)
 
-                # Add food - v1.4.8: Handle existing vs new foods differently
+                # Add food - v1.4.11: More defensive null/None handling for IDs
                 # If food has ID (exists in DB): send minimal dict with id/name
                 # If food has no ID (new): send just name string for Pydantic validator to create it
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
                     if isinstance(food, dict):
-                        # Check if this food already exists (has an ID)
-                        if "id" in food and food["id"]:
+                        # Check if this food already exists (has an ID that's not None/null/empty)
+                        food_id = food.get("id")
+                        if food_id is not None and food_id != "" and food_id:
                             # Existing food - send minimal dict with ID
                             mealie_ingredient["food"] = {
-                                "id": food["id"],
+                                "id": food_id,
                                 "name": food["name"]
                             }
                         elif "name" in food and food["name"]:
