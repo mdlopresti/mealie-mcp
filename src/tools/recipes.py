@@ -538,26 +538,40 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - send as STRING to trigger Pydantic validator
-                # Mealie's @field_validator("unit", mode="before") converts strings to CreateIngredientUnit
-                # Sending dicts causes SQLAlchemy to expect 'id' field (ValueError)
+                # Add unit - v1.4.8: Handle existing vs new units differently
+                # If unit has ID (exists in DB): send minimal dict with id/name
+                # If unit has no ID (new): send just name string for Pydantic validator to create it
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
                     if isinstance(unit, dict):
-                        # Extract just the name string - Mealie's validator will create CreateIngredientUnit
-                        if "name" in unit and unit["name"]:
+                        # Check if this unit already exists (has an ID)
+                        if "id" in unit and unit["id"]:
+                            # Existing unit - send minimal dict with ID
+                            mealie_ingredient["unit"] = {
+                                "id": unit["id"],
+                                "name": unit["name"]
+                            }
+                        elif "name" in unit and unit["name"]:
+                            # New unit - send just name string
                             mealie_ingredient["unit"] = unit["name"]
                     elif unit:
                         mealie_ingredient["unit"] = str(unit)
 
-                # Add food - send as STRING to trigger Pydantic validator
-                # Mealie's @field_validator("food", mode="before") converts strings to CreateIngredientFood
-                # Sending dicts causes SQLAlchemy to expect 'id' field (ValueError)
+                # Add food - v1.4.8: Handle existing vs new foods differently
+                # If food has ID (exists in DB): send minimal dict with id/name
+                # If food has no ID (new): send just name string for Pydantic validator to create it
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
                     if isinstance(food, dict):
-                        # Extract just the name string - Mealie's validator will create CreateIngredientFood
-                        if "name" in food and food["name"]:
+                        # Check if this food already exists (has an ID)
+                        if "id" in food and food["id"]:
+                            # Existing food - send minimal dict with ID
+                            mealie_ingredient["food"] = {
+                                "id": food["id"],
+                                "name": food["name"]
+                            }
+                        elif "name" in food and food["name"]:
+                            # New food - send just name string
                             mealie_ingredient["food"] = food["name"]
                     elif food:
                         mealie_ingredient["food"] = str(food)
