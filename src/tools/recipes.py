@@ -538,35 +538,29 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - use CreateIngredientUnit schema (name only, no id)
-                # This avoids IngredientUnit validation which requires read-only fields
+                # Add unit - send as STRING to trigger Pydantic validator
+                # Mealie's @field_validator("unit", mode="before") converts strings to CreateIngredientUnit
+                # Sending dicts causes SQLAlchemy to expect 'id' field (ValueError)
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
                     if isinstance(unit, dict):
-                        # Only send name field - let Mealie look up existing units by name
-                        # Sending id causes Pydantic to validate as IngredientUnit (requires created_at, updated_at)
-                        # Instead we use CreateIngredientUnit (just name) and Mealie will match by name
+                        # Extract just the name string - Mealie's validator will create CreateIngredientUnit
                         if "name" in unit and unit["name"]:
-                            mealie_ingredient["unit"] = {"name": unit["name"]}
+                            mealie_ingredient["unit"] = unit["name"]
                     elif unit:
-                        mealie_ingredient["unit"] = {"name": str(unit)}
+                        mealie_ingredient["unit"] = str(unit)
 
-                # Add food - use CreateIngredientFood schema (name + labelId, no id)
-                # This avoids IngredientFood validation which requires read-only fields
+                # Add food - send as STRING to trigger Pydantic validator
+                # Mealie's @field_validator("food", mode="before") converts strings to CreateIngredientFood
+                # Sending dicts causes SQLAlchemy to expect 'id' field (ValueError)
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
                     if isinstance(food, dict):
-                        # Only send name and labelId - let Mealie look up existing foods by name
-                        # Sending id causes Pydantic to validate as IngredientFood (requires created_at, updated_at, label)
-                        # Instead we use CreateIngredientFood (name + labelId) and Mealie will match by name
-                        clean_food = {}
+                        # Extract just the name string - Mealie's validator will create CreateIngredientFood
                         if "name" in food and food["name"]:
-                            clean_food["name"] = food["name"]
-                        if "labelId" in food and food["labelId"]:
-                            clean_food["label_id"] = food["labelId"]  # Note: snake_case for Pydantic
-                        mealie_ingredient["food"] = clean_food
+                            mealie_ingredient["food"] = food["name"]
                     elif food:
-                        mealie_ingredient["food"] = {"name": str(food)}
+                        mealie_ingredient["food"] = str(food)
 
                 # Add note
                 if "note" in ingredient_data and ingredient_data["note"]:

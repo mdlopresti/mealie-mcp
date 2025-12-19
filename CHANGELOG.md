@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.6] - 2025-12-18
+
+### Fixed
+- **CRITICAL: Send unit/food as STRINGS not DICTS** - Leverages Mealie's Pydantic field validators
+- Mealie's `@field_validator("unit", mode="before")` converts strings to CreateIngredientUnit automatically
+- Mealie's `@field_validator("food", mode="before")` converts strings to CreateIngredientFood automatically
+- When sent as dicts, SQLAlchemy ORM validation in `auto_init.py:175` expects 'id' field (ValueError)
+- Root cause identified from Mealie server logs showing "Expected 'id' to be provided for food/unit"
+- Changed from `{"name": "cup"}` to just `"cup"` - Mealie handles the rest
+- **This finally fixes the HTTP 500 ValueError when updating recipes with structured ingredients**
+
 ## [1.4.5] - 2025-12-18
 
 ### Fixed
