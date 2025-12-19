@@ -738,6 +738,77 @@ class MealieClient:
         return self.post("/api/units/merge", json=payload)
 
     # -------------------------------------------------------------------------
+    # Recipe Image Upload
+    # -------------------------------------------------------------------------
+
+    def upload_recipe_image_from_url(self, slug: str, image_url: str) -> Dict[str, Any]:
+        """
+        Upload an image to an existing recipe from a URL.
+
+        Args:
+            slug: Recipe slug
+            image_url: URL of the image to download and upload
+
+        Returns:
+            Update confirmation
+
+        Raises:
+            MealieAPIError: If image download or upload fails
+        """
+        import io
+        from pathlib import Path
+
+        # Download the image
+        try:
+            response = httpx.get(image_url, timeout=30.0, follow_redirects=True)
+            response.raise_for_status()
+            image_data = response.content
+        except Exception as e:
+            raise MealieAPIError(f"Failed to download image from {image_url}: {str(e)}")
+
+        # Determine extension from URL or content-type
+        extension = Path(image_url).suffix.lstrip('.').lower()
+        if not extension:
+            content_type = response.headers.get('content-type', '')
+            if 'jpeg' in content_type or 'jpg' in content_type:
+                extension = 'jpg'
+            elif 'png' in content_type:
+                extension = 'png'
+            elif 'webp' in content_type:
+                extension = 'webp'
+            else:
+                extension = 'jpg'  # default fallback
+
+        # Upload to Mealie
+        files = {
+            'image': (f'image.{extension}', io.BytesIO(image_data), f'image/{extension}')
+        }
+        data = {
+            'extension': extension
+        }
+
+        endpoint = f"/api/recipes/{slug}/image"
+        url = urljoin(self.base_url, endpoint)
+
+        try:
+            resp = self.client.put(
+                url,
+                files=files,
+                data=data,
+                timeout=self.TIMEOUT
+            )
+            resp.raise_for_status()
+            return {"success": True, "message": f"Image uploaded to recipe '{slug}'"}
+        except httpx.HTTPStatusError as e:
+            raise MealieAPIError(
+                f"Failed to upload image to recipe: {e.response.text}",
+                status_code=e.response.status_code,
+                response_body=e.response.text
+            )
+        except Exception as e:
+            raise MealieAPIError(f"Failed to upload image: {str(e)}")
+
+    # -------------------------------------------------------------------------
     # Recipe from Image
     # -------------------------------------------------------------------------
 

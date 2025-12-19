@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2025-12-19
+
+### Added
+- **Recipe Image Upload from URL** - `mealie_recipes_upload_image_from_url(slug, image_url)`
+  - Downloads image from provided URL and uploads to existing recipe
+  - Automatic image format detection (jpg, png, webp)
+  - Mealie handles resizing and optimization automatically
+  - Enables easy image addition without manual download/upload workflow
+
+### Technical Implementation
+- Added `upload_recipe_image_from_url()` method to MealieClient
+- Uses multipart/form-data with `PUT /api/recipes/{slug}/image` endpoint
+- Integrated httpx for image download with proper error handling
+- Added `recipes_upload_image_from_url()` tool in tools/recipes.py
+- Exposed as `mealie_recipes_upload_image_from_url` MCP tool
+
+### Use Cases
+- Add images to recipes imported from plain text or JSON
+- Update recipe images from authoritative sources (e.g., Anova Culinary)
+- Batch image updates for recipe collections
+- Preserve visual context from original recipe sources
+
 ## [1.6.0] - 2025-12-19
 
 ### Added

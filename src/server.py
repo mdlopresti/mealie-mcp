@@ -38,6 +38,7 @@ from tools.recipes import (
     recipes_bulk_export,
     recipes_bulk_update_settings,
     recipes_create_from_image,
+    recipes_upload_image_from_url,
 )
 from tools.mealplans import (
     mealplans_list,
@@ -476,6 +477,29 @@ def mealie_recipes_create_from_image(image_data: str, extension: str = "jpg") ->
         JSON string with created recipe data
     """
     return recipes_create_from_image(image_data=image_data, extension=extension)
+
+
+@mcp.tool()
+def mealie_recipes_upload_image_from_url(slug: str, image_url: str) -> str:
+    """Upload an image to an existing recipe from a URL.
+
+    Downloads an image from the provided URL and uploads it to the specified recipe.
+    The image will be automatically resized and optimized by Mealie.
+
+    Args:
+        slug: Recipe slug identifier
+        image_url: Full URL of the image to download and upload
+
+    Returns:
+        JSON string with upload confirmation or error details
+
+    Example:
+        mealie_recipes_upload_image_from_url(
+            slug="sous-vide-salmon",
+            image_url="https://images.anovaculinary.com/sous-vide-salmon-2/header/sous-vide-salmon-2-header-centered.jpg"
+        )
+    """
+    return recipes_upload_image_from_url(slug=slug, image_url=image_url)
 
 
 # -----------------------------------------------------------------------------

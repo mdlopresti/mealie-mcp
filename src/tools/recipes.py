@@ -1060,6 +1060,34 @@ def recipes_create_from_image(image_data: str, extension: str = "jpg") -> str:
         return json.dumps(error_result, indent=2)
 
 
+def recipes_upload_image_from_url(slug: str, image_url: str) -> str:
+    """Upload an image to an existing recipe from a URL.
+
+    Args:
+        slug: Recipe slug
+        image_url: URL of the image to download and upload
+
+    Returns:
+        JSON string with upload confirmation or error details
+    """
+    try:
+        client = MealieClient()
+        result = client.upload_recipe_image_from_url(slug, image_url)
+        return json.dumps(result, indent=2)
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 if __name__ == "__main__":
     """
     Test the recipe tools against the live Mealie instance.
