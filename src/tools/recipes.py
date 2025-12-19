@@ -491,8 +491,19 @@ def recipes_update(
             else:
                 update_payload["recipeCategory"] = existing_categories
 
-            # Update the recipe
-            client.put(f"/api/recipes/{slug}", json=update_payload)
+            # Update the recipe using PATCH if only updating tags/categories
+            # This avoids the "Recipe already exists" validation error
+            if (tags is not None or categories is not None) and all(x is None for x in [name, description, recipe_yield, total_time, prep_time, cook_time, ingredients, instructions, org_url, image]):
+                # Only updating tags/categories - use PATCH to avoid name validation
+                patch_payload = {}
+                if tags is not None:
+                    patch_payload["tags"] = update_payload["tags"]
+                if categories is not None:
+                    patch_payload["recipeCategory"] = update_payload["recipeCategory"]
+                client.patch(f"/api/recipes/{slug}", json=patch_payload)
+            else:
+                # Updating other fields - use PUT with full payload
+                client.put(f"/api/recipes/{slug}", json=update_payload)
 
             # Get the updated recipe
             updated_recipe = client.get(f"/api/recipes/{slug}")
