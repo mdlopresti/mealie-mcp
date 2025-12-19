@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2025-12-19
+
+### Fixed
+- **Critical: Bulk operations pagination bug**
+  - Fixed `mealie_recipes_bulk_tag` and `mealie_recipes_bulk_categorize` failing with "string indices must be integers" error
+  - Root cause: Mealie API returns paginated responses `{"items": [...], "page": 1, ...}` but code expected direct arrays
+  - Bulk operations were iterating over dict keys ("page", "per_page", etc.) instead of the items array
+  - Solution: Extract `items` key from paginated responses before processing
+  - Now properly handles both paginated and non-paginated responses
+
+- **JSON parsing error handling**
+  - Improved error reporting when API returns non-JSON responses
+  - Changed silent fallback to text into explicit error with response preview
+  - Helps diagnose API issues instead of returning strings that cause downstream errors
+
 ## [1.6.2] - 2025-12-19
 
 ### Fixed

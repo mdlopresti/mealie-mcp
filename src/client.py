@@ -174,8 +174,13 @@ class MealieClient:
                 if response.content:
                     try:
                         return response.json()
-                    except Exception:
-                        return response.text
+                    except Exception as json_err:
+                        # Log the JSON parse error for debugging
+                        raise MealieAPIError(
+                            f"Failed to parse JSON response: {str(json_err)}. Response text: {response.text[:200]}",
+                            status_code=response.status_code,
+                            response_body=response.text,
+                        )
                 return None
 
             except httpx.HTTPStatusError as e:
@@ -506,7 +511,9 @@ class MealieClient:
             MealieAPIError: If bulk action fails
         """
         # Get all existing tags to look up IDs
-        all_tags = self.list_tags()
+        all_tags_response = self.list_tags()
+        # Handle paginated response
+        all_tags = all_tags_response.get("items", all_tags_response) if isinstance(all_tags_response, dict) else all_tags_response
         tag_map = {tag["name"]: tag for tag in all_tags}
 
         # Convert tag names to tag objects (with id, name, slug)
@@ -544,7 +551,9 @@ class MealieClient:
             MealieAPIError: If bulk action fails
         """
         # Get all existing categories to look up IDs
-        all_categories = self.list_categories()
+        all_categories_response = self.list_categories()
+        # Handle paginated response
+        all_categories = all_categories_response.get("items", all_categories_response) if isinstance(all_categories_response, dict) else all_categories_response
         category_map = {cat["name"]: cat for cat in all_categories}
 
         # Convert category names to category objects (with id, name, slug)
