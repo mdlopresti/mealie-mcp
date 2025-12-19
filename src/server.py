@@ -8,7 +8,7 @@ Provides tools and resources for recipe management, meal planning, and shopping 
 import os
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 # Ensure the src directory is in the path for imports
 sys.path.insert(0, str(Path(__file__).parent))
