@@ -384,6 +384,8 @@ def recipes_update(
     instructions: Optional[list[str]] = None,
     tags: Optional[list[str]] = None,
     categories: Optional[list[str]] = None,
+    org_url: Optional[str] = None,
+    image: Optional[str] = None,
 ) -> str:
     """Update an existing recipe in Mealie.
 
@@ -399,6 +401,8 @@ def recipes_update(
         instructions: New list of instruction strings (replaces existing)
         tags: New list of tag names (replaces existing)
         categories: New list of category names (replaces existing)
+        org_url: Original recipe URL
+        image: Recipe image identifier
 
     Returns:
         JSON string with updated recipe details
@@ -421,6 +425,8 @@ def recipes_update(
                 "totalTime": total_time if total_time is not None else recipe.get("totalTime"),
                 "prepTime": prep_time if prep_time is not None else recipe.get("prepTime"),
                 "cookTime": cook_time if cook_time is not None else recipe.get("cookTime"),
+                "orgURL": org_url if org_url is not None else recipe.get("orgURL"),
+                "image": image if image is not None else recipe.get("image"),
             }
 
             # Handle ingredients - replace if provided, keep existing otherwise
@@ -519,6 +525,52 @@ def recipes_update_structured_ingredients(
     """
     try:
         with MealieClient() as client:
+            # v1.4.15: Pre-create any missing foods/units
+            # This avoids SQLAlchemy auto_init errors when updating recipes
+            created_units = {}  # name -> id mapping
+            created_foods = {}  # name -> id mapping
+
+            for parsed in parsed_ingredients:
+                if isinstance(parsed, dict) and "ingredient" in parsed:
+                    ingredient_data = parsed["ingredient"]
+                else:
+                    ingredient_data = parsed
+
+                # Check if unit needs to be created
+                if "unit" in ingredient_data and ingredient_data["unit"]:
+                    unit = ingredient_data["unit"]
+                    if isinstance(unit, dict):
+                        unit_name = unit.get("name")
+                        unit_id = unit.get("id")
+                        # If unit has no ID, create it
+                        if unit_name and not unit_id and unit_name not in created_units:
+                            try:
+                                new_unit = client.create_unit(unit_name)
+                                created_units[unit_name] = new_unit.get("id")
+                                # Update the ingredient data with the new ID
+                                ingredient_data["unit"]["id"] = new_unit.get("id")
+                            except Exception as e:
+                                # If creation fails (maybe it exists but parser didn't find it),
+                                # we'll try to send as string and let Mealie handle it
+                                pass
+
+                # Check if food needs to be created
+                if "food" in ingredient_data and ingredient_data["food"]:
+                    food = ingredient_data["food"]
+                    if isinstance(food, dict):
+                        food_name = food.get("name")
+                        food_id = food.get("id")
+                        # If food has no ID, create it
+                        if food_name and not food_id and food_name not in created_foods:
+                            try:
+                                new_food = client.create_food(food_name)
+                                created_foods[food_name] = new_food.get("id")
+                                # Update the ingredient data with the new ID
+                                ingredient_data["food"]["id"] = new_food.get("id")
+                            except Exception as e:
+                                # If creation fails, we'll try to send as string
+                                pass
+
             # Convert parser output format to Mealie ingredient format
             mealie_ingredients = []
 
@@ -538,21 +590,33 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - v1.4.12: ALWAYS send as string, let Mealie handle it
-                # Mealie's Pydantic field validators will create or reference by name
+                # Add unit - v1.4.15: Send with ID if available (after pre-creation)
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
-                    if isinstance(unit, dict) and "name" in unit:
-                        mealie_ingredient["unit"] = unit["name"]
+                    if isinstance(unit, dict):
+                        unit_id = unit.get("id")
+                        unit_name = unit.get("name")
+                        if unit_id:
+                            # Send as dict with id and name
+                            mealie_ingredient["unit"] = {"id": unit_id, "name": unit_name}
+                        elif unit_name:
+                            # Fall back to string if no ID
+                            mealie_ingredient["unit"] = unit_name
                     elif unit:
                         mealie_ingredient["unit"] = str(unit)
 
-                # Add food - v1.4.12: ALWAYS send as string, let Mealie handle it
-                # Mealie's Pydantic field validators will create or reference by name
+                # Add food - v1.4.15: Send with ID if available (after pre-creation)
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
-                    if isinstance(food, dict) and "name" in food:
-                        mealie_ingredient["food"] = food["name"]
+                    if isinstance(food, dict):
+                        food_id = food.get("id")
+                        food_name = food.get("name")
+                        if food_id:
+                            # Send as dict with id and name
+                            mealie_ingredient["food"] = {"id": food_id, "name": food_name}
+                        elif food_name:
+                            # Fall back to string if no ID
+                            mealie_ingredient["food"] = food_name
                     elif food:
                         mealie_ingredient["food"] = str(food)
 

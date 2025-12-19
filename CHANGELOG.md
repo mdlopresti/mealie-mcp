@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-12-19
+
+### Added
+- **orgURL and image support** in `mealie_recipes_update` tool
+- New `org_url` parameter to set/update original recipe URL
+- New `image` parameter to set/update recipe image identifier
+- Enables preserving source attribution when modifying recipes
+
+### Changed
+- `recipes_update()` function signature updated with `org_url` and `image` parameters
+- `mealie_recipes_update()` MCP tool now exposes orgURL and image fields
+
+## [1.4.15] - 2025-12-19
+
+### Fixed
+- **Pre-create missing foods/units** before updating recipe ingredients
+- Added `create_food()` and `create_unit()` client methods
+- Ensures all unit/food references have IDs to avoid SQLAlchemy auto_init ValueError
+- Resolves "Expected 'id' to be provided for unit/food" errors with new ingredients
+
+### Changed
+- Send unit/food as `{id, name}` dicts when IDs are available
+- Fall back to string format only if ID is missing after pre-creation
+
+## [1.4.14] - 2025-12-19
+
+### Changed
+- **Use PATCH instead of GET→PUT** for updating recipe ingredients
+- Send only `recipeIngredient` field in minimal PATCH payload
+- Avoids SQLAlchemy auto_init issues with full recipe PUT approach
+
 ## [1.4.13] - 2025-12-19
 
 ### Added

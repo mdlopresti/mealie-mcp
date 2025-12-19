@@ -367,6 +367,38 @@ class MealieClient:
         }
         return self.post("/api/parser/ingredients", json=payload)
 
+    def create_food(self, name: str) -> Dict[str, Any]:
+        """
+        Create a new food item.
+
+        Args:
+            name: The food name
+
+        Returns:
+            Created food data with id
+
+        Raises:
+            MealieAPIError: If creation fails
+        """
+        payload = {"name": name}
+        return self.post("/api/foods", json=payload)
+
+    def create_unit(self, name: str) -> Dict[str, Any]:
+        """
+        Create a new measurement unit.
+
+        Args:
+            name: The unit name
+
+        Returns:
+            Created unit data with id
+
+        Raises:
+            MealieAPIError: If creation fails
+        """
+        payload = {"name": name}
+        return self.post("/api/units", json=payload)
+
     def update_recipe_ingredients(self, slug: str, ingredients: list[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Update a recipe with structured ingredients.
@@ -386,19 +418,17 @@ class MealieClient:
         Raises:
             MealieAPIError: If update fails
         """
-        # v1.4.9: GET full recipe, modify ingredients, PUT back
-        # Combines v1.4.5 approach with v1.4.8 ID logic
-        recipe = self.get(f"/api/recipes/{slug}")
-        recipe["recipeIngredient"] = ingredients
+        # v1.4.14: Use PATCH with only recipeIngredient field
+        # Avoids SQLAlchemy auto_init issues with full recipe PUT
+        payload = {"recipeIngredient": ingredients}
 
         # DEBUG: Print the exact JSON being sent to Mealie
         import sys, json
-        print(f"\n=== DEBUG: JSON being sent to Mealie PUT /api/recipes/{slug} ===", file=sys.stderr)
-        print(f"recipeIngredient field:", file=sys.stderr)
-        print(json.dumps(recipe["recipeIngredient"], indent=2), file=sys.stderr)
+        print(f"\n=== DEBUG: JSON being sent to Mealie PATCH /api/recipes/{slug} ===", file=sys.stderr)
+        print(json.dumps(payload, indent=2), file=sys.stderr)
         print(f"=== END DEBUG ===\n", file=sys.stderr)
 
-        return self.put(f"/api/recipes/{slug}", json=recipe)
+        return self.patch(f"/api/recipes/{slug}", json=payload)
 
 
 if __name__ == "__main__":

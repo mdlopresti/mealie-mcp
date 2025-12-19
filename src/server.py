@@ -217,6 +217,8 @@ def mealie_recipes_update(
     instructions: list[str] | None = None,
     tags: list[str] | None = None,
     categories: list[str] | None = None,
+    org_url: str | None = None,
+    image: str | None = None,
 ) -> str:
     """Update an existing recipe in Mealie.
 
@@ -232,6 +234,8 @@ def mealie_recipes_update(
         instructions: New list of instruction strings (replaces existing)
         tags: New list of tag names (replaces existing)
         categories: New list of category names (replaces existing)
+        org_url: Original recipe URL
+        image: Recipe image identifier
 
     Returns:
         JSON string with updated recipe details
@@ -248,6 +252,8 @@ def mealie_recipes_update(
         instructions=instructions,
         tags=tags,
         categories=categories,
+        org_url=org_url,
+        image=image,
     )
 
 
