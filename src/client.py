@@ -387,8 +387,9 @@ class MealieClient:
             MealieAPIError: If update fails
         """
         # Update recipe with new ingredients using PATCH
+        # Note: Use snake_case field name for Pydantic validation
         payload = {
-            "recipeIngredient": ingredients
+            "recipe_ingredient": ingredients
         }
         return self.patch(f"/api/recipes/{slug}", json=payload)
 
