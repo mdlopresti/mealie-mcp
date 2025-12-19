@@ -538,26 +538,24 @@ def recipes_update_structured_ingredients(
                 if "quantity" in ingredient_data:
                     mealie_ingredient["quantity"] = ingredient_data["quantity"]
 
-                # Add unit - Mealie accepts full parser output including read-only fields
+                # Add unit - pass full parser output except read-only nested objects
                 if "unit" in ingredient_data and ingredient_data["unit"]:
                     unit = ingredient_data["unit"]
                     if isinstance(unit, dict):
-                        # Pass the full unit object - Mealie handles it correctly
-                        mealie_ingredient["unit"] = unit
+                        # Remove nested objects that cause validation errors
+                        clean_unit = {k: v for k, v in unit.items() if k != "label"}
+                        mealie_ingredient["unit"] = clean_unit
                     elif unit:
-                        # If it's just a string, create a dict with name
-                        # Note: This will fail if the unit doesn't exist in Mealie
                         mealie_ingredient["unit"] = {"name": str(unit)}
 
-                # Add food - Mealie accepts full parser output including read-only fields
+                # Add food - pass full parser output except read-only nested objects
                 if "food" in ingredient_data and ingredient_data["food"]:
                     food = ingredient_data["food"]
                     if isinstance(food, dict):
-                        # Pass the full food object - Mealie handles it correctly
-                        mealie_ingredient["food"] = food
+                        # Remove nested 'label' object that causes validation errors
+                        clean_food = {k: v for k, v in food.items() if k != "label"}
+                        mealie_ingredient["food"] = clean_food
                     elif food:
-                        # If it's just a string, create a dict with name
-                        # Note: This will fail if the food doesn't exist in Mealie
                         mealie_ingredient["food"] = {"name": str(food)}
 
                 # Add note
