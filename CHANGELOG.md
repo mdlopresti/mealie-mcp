@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.5] - 2025-12-19
+
+### Fixed
+- **Critical: "Recipe already exists" error in mealie_recipes_update**
+  - Fixed persistent "Recipe already exists" error when updating tags/categories
+  - Root cause: Mealie API's PUT endpoint validates name uniqueness even for the same recipe
+  - Solution: Use PATCH instead of PUT when only updating tags/categories
+  - PATCH endpoint doesn't trigger name validation, avoiding the false positive error
+  - Full updates (name, description, etc.) still use PUT with complete payload
+
 ## [1.6.4] - 2025-12-19
 
 ### Fixed

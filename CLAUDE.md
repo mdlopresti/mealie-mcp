@@ -197,3 +197,20 @@ git tag v1.6.3
 git push origin v1.6.3  # Triggers release CI
 # Then update parent .mcp.json to use the specific tag
 ```
+
+## Debugging Mealie Server
+
+When debugging issues with the Mealie API itself (not the MCP server), check the Mealie server logs:
+
+```bash
+# Get the Mealie pod name
+kubectl get pod -n mealie
+
+# View logs from the Mealie pod
+kubectl logs -f <pod-name> -n mealie
+
+# Example
+kubectl logs -f mealie-7d8f9b5c4-xyz12 -n mealie
+```
+
+This helps diagnose 500 errors or other API issues that originate from the Mealie server rather than the MCP client.
