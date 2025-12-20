@@ -451,21 +451,28 @@ def recipes_update(
             existing_tags = recipe.get("tags", [])
 
             if tags is not None:
-                # Get existing tag names
+                # Get ALL tags from system to look up IDs
+                all_tags_resp = client.list_tags()
+                all_tags = all_tags_resp.get("items", all_tags_resp) if isinstance(all_tags_resp, dict) else all_tags_resp
+                tag_lookup = {tag["name"]: tag for tag in all_tags}
+
+                # Get existing tag names on this recipe
                 existing_tag_names = {tag.get("name") for tag in existing_tags if isinstance(tag, dict)}
 
-                # Create tag objects for new tags
-                new_tag_objects = []
-                for tag in tags:
-                    if tag not in existing_tag_names:
-                        new_tag_objects.append({
-                            "name": tag,
-                            "slug": _slugify(tag),
-                            "groupId": group_id
-                        })
+                # Build final tag list
+                final_tags = list(existing_tags)  # Start with existing
+                for tag_name in tags:
+                    if tag_name not in existing_tag_names:
+                        # Look up in system tags
+                        if tag_name in tag_lookup:
+                            # Tag exists in system, use its full object
+                            final_tags.append(tag_lookup[tag_name])
+                        else:
+                            # Tag doesn't exist, create it first
+                            new_tag = client.create_tag(tag_name)
+                            final_tags.append(new_tag)
 
-                # Combine existing and new tags
-                update_payload["tags"] = existing_tags + new_tag_objects
+                update_payload["tags"] = final_tags
             else:
                 update_payload["tags"] = existing_tags
 
@@ -473,21 +480,28 @@ def recipes_update(
             existing_categories = recipe.get("recipeCategory", [])
 
             if categories is not None:
-                # Get existing category names
+                # Get ALL categories from system to look up IDs
+                all_cats_resp = client.list_categories()
+                all_cats = all_cats_resp.get("items", all_cats_resp) if isinstance(all_cats_resp, dict) else all_cats_resp
+                cat_lookup = {cat["name"]: cat for cat in all_cats}
+
+                # Get existing category names on this recipe
                 existing_cat_names = {cat.get("name") for cat in existing_categories if isinstance(cat, dict)}
 
-                # Create category objects for new categories
-                new_cat_objects = []
-                for cat in categories:
-                    if cat not in existing_cat_names:
-                        new_cat_objects.append({
-                            "name": cat,
-                            "slug": _slugify(cat),
-                            "groupId": group_id
-                        })
+                # Build final category list
+                final_cats = list(existing_categories)  # Start with existing
+                for cat_name in categories:
+                    if cat_name not in existing_cat_names:
+                        # Look up in system categories
+                        if cat_name in cat_lookup:
+                            # Category exists in system, use its full object
+                            final_cats.append(cat_lookup[cat_name])
+                        else:
+                            # Category doesn't exist, create it first
+                            new_cat = client.create_category(cat_name)
+                            final_cats.append(new_cat)
 
-                # Combine existing and new categories
-                update_payload["recipeCategory"] = existing_categories + new_cat_objects
+                update_payload["recipeCategory"] = final_cats
             else:
                 update_payload["recipeCategory"] = existing_categories
 

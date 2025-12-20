@@ -5,15 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.6] - 2025-12-19
+
+### Fixed
+- **MAJOR: SQL Integrity Error when updating recipes with tags/categories**
+  - Fixed "Recipe already exists" error that was actually a SQL UNIQUE constraint violation
+  - Root cause: Code created new tag/category objects without IDs, causing Mealie to try inserting duplicates
+  - Previous fix (v1.6.5 PATCH approach) didn't work - both PUT and PATCH trigger same validation
+  - Real solution: Look up existing tags/categories by name and use their full objects with IDs
+  - For new tags/categories, create them via API first, then reference them by ID
+  - Server logs showed: `ERROR SQL Integrity Error on recipe controller action`
+  - This was the actual blocker preventing all recipe organization work
+
+### Changed
+- `mealie_recipes_update` now:
+  1. Fetches all system tags/categories to build lookup table
+  2. For each tag/category being added, checks if it exists in system
+  3. If exists: uses the full object (with ID, groupId, name, slug)
+  4. If new: calls `create_tag()` or `create_category()` first, then uses returned object
+  5. Combines with existing recipe tags/categories and sends to API
+- This matches how Mealie web UI works internally
+
 ## [1.6.5] - 2025-12-19
 
 ### Fixed
-- **Critical: "Recipe already exists" error in mealie_recipes_update**
-  - Fixed persistent "Recipe already exists" error when updating tags/categories
-  - Root cause: Mealie API's PUT endpoint validates name uniqueness even for the same recipe
-  - Solution: Use PATCH instead of PUT when only updating tags/categories
-  - PATCH endpoint doesn't trigger name validation, avoiding the false positive error
-  - Full updates (name, description, etc.) still use PUT with complete payload
+- **FAILED APPROACH: "Recipe already exists" error in mealie_recipes_update**
+  - Attempted fix using PATCH instead of PUT for tag/category-only updates
+  - This approach did not work - PATCH has same validation as PUT
+  - See v1.6.6 for actual fix
 
 ## [1.6.4] - 2025-12-19
 
