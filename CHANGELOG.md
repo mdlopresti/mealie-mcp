@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.8] - 2025-12-21
+
+### Added
+- Support for clearing optional fields using `"__CLEAR__"` sentinel value (#4)
+- `CLEAR_FIELD` constant in `tools/mealplans.py` for field clearing
+- Comprehensive tests for field clearing in `tests/test_mealplan_clearing.py`
+- Documentation for field clearing in tool docstrings and README
+
+### Fixed
+- Fixed inability to clear `recipe_id`, `title`, and `text` from meal plan entries (#4)
+- Users can now remove recipe associations without deleting the entire entry
+- Clearing fields sends `null` to API while omitting fields preserves existing values
+- Maintains backward compatibility - omitted parameters still preserve existing values
+
 ## [1.6.7] - 2025-12-21
 
 ### Fixed
