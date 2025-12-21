@@ -21,6 +21,7 @@ ENV/
 .pytest_cache/
 .coverage
 htmlcov/
+.mypy_cache/
 
 # Build artifacts
 dist/

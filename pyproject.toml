@@ -1,0 +1,34 @@
+[tool.mypy]
+python_version = "3.12"
+
+# Phase 1: Minimal type checking to catch critical errors
+# Future phases will enable stricter checking
+
+# Critical checks
+warn_unused_configs = true
+warn_no_return = true
+
+# Relaxed settings to allow existing code
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+disallow_untyped_calls = false
+warn_return_any = false
+warn_redundant_casts = false
+warn_unused_ignores = false
+strict_optional = false
+no_implicit_optional = false
+
+# Allow third-party library imports
+# Note: py_compile catches missing stdlib imports like 'Any'
+ignore_missing_imports = true
+
+# Specific settings for source directory
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

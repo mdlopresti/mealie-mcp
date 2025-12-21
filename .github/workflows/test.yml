@@ -1,0 +1,105 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:  # Allow this workflow to be called by other workflows
+
+# Cancel in-progress runs for the same workflow and branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Check Python syntax (all files)
+        run: |
+          echo "Checking Python syntax for all files in src/..."
+          find src -name "*.py" -print0 | while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            python -m py_compile "$file"
+          done
+          echo "All Python files have valid syntax"
+
+  type-check:
+    name: Type Checking with mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run mypy type checking
+        # Phase 1: Non-blocking - reports issues but doesn't fail CI
+        # Future phases will make this blocking after fixing existing issues
+        continue-on-error: true
+        run: |
+          echo "Running mypy type checking (informational only)..."
+          mypy --version
+          mypy src/ || echo "Type checking found issues - see output above"
+
+  smoke-test:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run smoke tests
+        run: |
+          pytest tests/test_smoke.py -v --tb=short
+
+      - name: Verify all modules can be imported
+        run: |
+          python -c "import sys; sys.path.insert(0, 'src'); import server"
+          python -c "import sys; sys.path.insert(0, 'src'); from client import MealieClient, MealieAPIError"
+          echo "All critical imports successful"
