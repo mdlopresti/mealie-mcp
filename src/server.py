@@ -49,6 +49,7 @@ from tools.mealplans import (
     mealplans_delete,
     mealplans_random,
     mealplans_get_by_date,
+    mealplans_search,
     mealplan_rules_list,
     mealplan_rules_get,
     mealplan_rules_create,
@@ -641,6 +642,39 @@ def mealie_mealplans_random() -> str:
         JSON string with a suggested recipe for meal planning
     """
     return mealplans_random()
+
+
+@mcp.tool()
+def mealie_mealplans_search(
+    query: str,
+    start_date: str | None = None,
+    end_date: str | None = None
+) -> str:
+    """Search meal plans by recipe name, title, or text content.
+
+    This tool searches through meal plans in a date range and returns
+    entries matching the search query. The search is case-insensitive
+    and matches against:
+    - Recipe names (if a recipe is assigned)
+    - Entry titles
+    - Entry text/notes
+
+    Args:
+        query: Search term to filter meal plans (case-insensitive)
+        start_date: Start date in YYYY-MM-DD format (defaults to today)
+        end_date: End date in YYYY-MM-DD format (defaults to 7 days from start)
+
+    Returns:
+        JSON string with matching meal plan entries
+
+    Examples:
+        # Find all meal plans with "pork" in recipe name/title/notes
+        mealie_mealplans_search("pork")
+
+        # Search within specific date range
+        mealie_mealplans_search("freezer meal", "2025-01-01", "2025-01-31")
+    """
+    return mealplans_search(query=query, start_date=start_date, end_date=end_date)
 
 
 @mcp.tool()
