@@ -107,6 +107,13 @@ from tools.organizers import (
     tools_update,
     tools_delete,
 )
+from tools.cookbooks import (
+    cookbooks_list,
+    cookbooks_create,
+    cookbooks_get,
+    cookbooks_update,
+    cookbooks_delete,
+)
 
 # Import resources
 from resources.recipes import get_recipes_list, get_recipe_detail
@@ -1436,6 +1443,96 @@ def mealie_tools_delete(tool_id: str) -> str:
         JSON string confirming deletion
     """
     return tools_delete(tool_id=tool_id)
+
+
+# -----------------------------------------------------------------------------
+# Cookbooks Management Tools
+# -----------------------------------------------------------------------------
+
+@mcp.tool()
+def mealie_cookbooks_list() -> str:
+    """List all cookbooks.
+
+    Returns:
+        JSON string with list of cookbooks
+    """
+    return cookbooks_list()
+
+
+@mcp.tool()
+def mealie_cookbooks_create(
+    name: str,
+    description: str = None,
+    slug: str = None,
+    public: bool = False
+) -> str:
+    """Create a new cookbook.
+
+    Args:
+        name: Name for the new cookbook
+        description: Optional description
+        slug: Optional URL slug
+        public: Whether the cookbook is public (default: False)
+
+    Returns:
+        JSON string with created cookbook details
+    """
+    return cookbooks_create(name=name, description=description, slug=slug, public=public)
+
+
+@mcp.tool()
+def mealie_cookbooks_get(cookbook_id: str) -> str:
+    """Get a cookbook by ID.
+
+    Args:
+        cookbook_id: The cookbook's ID
+
+    Returns:
+        JSON string with cookbook details
+    """
+    return cookbooks_get(cookbook_id=cookbook_id)
+
+
+@mcp.tool()
+def mealie_cookbooks_update(
+    cookbook_id: str,
+    name: str = None,
+    description: str = None,
+    slug: str = None,
+    public: bool = None
+) -> str:
+    """Update a cookbook.
+
+    Args:
+        cookbook_id: The cookbook's ID
+        name: New name for the cookbook
+        description: New description
+        slug: New URL slug
+        public: Whether the cookbook is public
+
+    Returns:
+        JSON string with updated cookbook details
+    """
+    return cookbooks_update(
+        cookbook_id=cookbook_id,
+        name=name,
+        description=description,
+        slug=slug,
+        public=public
+    )
+
+
+@mcp.tool()
+def mealie_cookbooks_delete(cookbook_id: str) -> str:
+    """Delete a cookbook.
+
+    Args:
+        cookbook_id: The cookbook's ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return cookbooks_delete(cookbook_id=cookbook_id)
 
 
 # -----------------------------------------------------------------------------
