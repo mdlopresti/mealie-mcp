@@ -72,7 +72,7 @@ jobs:
           mypy src/ || echo "Type checking found issues - see output above"
 
   smoke-test:
-    name: Smoke Tests
+    name: Smoke Tests with Coverage
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -94,9 +94,37 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Run smoke tests
+      - name: Run smoke tests with coverage
         run: |
-          pytest tests/test_smoke.py -v --tb=short
+          pytest tests/test_smoke.py -v --tb=short \
+            --cov=src \
+            --cov-report=term \
+            --cov-report=xml \
+            --cov-report=html
+
+      - name: Display coverage summary
+        run: |
+          echo "=== Coverage Summary ==="
+          python -m coverage report --precision=2
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@0561704f0f02c16a585d4c7555e57fa2e44cf909 # v5.5.2
+        with:
+          file: ./coverage.xml
+          flags: smoke-tests
+          name: smoke-test-coverage
+          fail_ci_if_error: true
+          verbose: true
+
+      - name: Upload coverage report as artifact
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            htmlcov/
+          retention-days: 7
 
       - name: Verify all modules can be imported
         run: |
