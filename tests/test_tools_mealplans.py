@@ -175,3 +175,182 @@ class TestMealPlanRules:
 
         data = json.loads(result)
         assert isinstance(data, dict)
+
+
+class TestMealPlansErrorHandling:
+    """Test error handling in meal plan operations."""
+
+    def test_list_api_error(self):
+        """Test error handling in mealplans_list."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = MealieAPIError(
+            "API Error", status_code=500, response_body="Error"
+        )
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_list()
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_create_api_error(self):
+        """Test error handling in mealplans_create."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = MealieAPIError(
+            "Bad Request", status_code=400, response_body="Invalid date"
+        )
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_create("2025-13-99", "dinner")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_update_api_error(self):
+        """Test error handling in mealplans_update."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = MealieAPIError(
+            "Not Found", status_code=404, response_body="Meal plan not found"
+        )
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update("nonexistent-id")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_rules_create_api_error(self):
+        """Test error handling in mealplan_rules_create."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = MealieAPIError(
+            "Conflict", status_code=409, response_body="Rule exists"
+        )
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplan_rules_create("Duplicate Rule", "dinner")
+
+        data = json.loads(result)
+        assert "error" in data
+
+
+class TestMealPlansAdvanced:
+    """Test advanced meal plan scenarios."""
+
+    def test_create_with_recipe(self):
+        """Test creating meal plan with recipe."""
+        mock_client = create_mock_client(post_value={
+            "id": "new",
+            "date": "2025-01-20",
+            "entryType": "dinner",
+            "recipe": {"id": "recipe-1", "name": "Pasta"}
+        })
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_create(
+                "2025-01-20",
+                "dinner",
+                recipe_id="recipe-1"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_create_with_title_and_text(self):
+        """Test creating meal plan with custom title and text."""
+        mock_client = create_mock_client(post_value={
+            "id": "new",
+            "date": "2025-01-20",
+            "entryType": "snack",
+            "title": "Healthy Snack",
+            "text": "Apple and peanut butter"
+        })
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_create(
+                "2025-01-20",
+                "snack",
+                title="Healthy Snack",
+                text="Apple and peanut butter"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_update_change_date(self):
+        """Test updating meal plan date."""
+        mock_client = create_mock_client(patch_value={
+            "id": "1",
+            "date": "2025-01-21"
+        })
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update("mealplan-1", meal_date="2025-01-21")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_update_change_recipe(self):
+        """Test updating meal plan recipe."""
+        mock_client = create_mock_client(patch_value={
+            "id": "1",
+            "recipe": {"id": "recipe-2"}
+        })
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update("mealplan-1", recipe_id="recipe-2")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_rules_create_with_tags_and_categories(self):
+        """Test creating rule with tags and categories."""
+        mock_client = create_mock_client(post_value={
+            "id": "new",
+            "name": "Vegan Dinners",
+            "entryType": "dinner",
+            "tags": [{"name": "Vegan"}],
+            "categories": [{"name": "Main"}, {"name": "Dinner"}]
+        })
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplan_rules_create(
+                "Vegan Dinners",
+                "dinner",
+                tags=["Vegan"],
+                categories=["Main", "Dinner"]
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_rules_update_tags(self):
+        """Test updating rule tags."""
+        mock_client = create_mock_client(patch_value={
+            "id": "1",
+            "tags": [{"name": "Quick"}, {"name": "Easy"}]
+        })
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplan_rules_update(
+                "rule-1",
+                tags=["Quick", "Easy"]
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)

@@ -224,3 +224,143 @@ class TestShoppingErrorHandling:
 
         data = json.loads(result)
         assert "error" in data
+
+    def test_items_add_api_error(self):
+        """Test error handling in shopping_items_add."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = MealieAPIError(
+            "Test error", status_code=400, response_body="Bad request"
+        )
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_items_add("list-1", note="Item")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_items_check_api_error(self):
+        """Test error handling in shopping_items_check."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.put.side_effect = MealieAPIError(
+            "Not found", status_code=404, response_body="Not found"
+        )
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_items_check("item-999", True)
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_generate_mealplan_api_error(self):
+        """Test error handling in shopping_generate_from_mealplan."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = MealieAPIError(
+            "Server error", status_code=500, response_body="Error"
+        )
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_generate_from_mealplan()
+
+        data = json.loads(result)
+        assert "error" in data
+
+
+class TestShoppingAdvanced:
+    """Test advanced shopping scenarios."""
+
+    def test_items_add_with_all_parameters(self):
+        """Test adding item with all parameters."""
+        mock_client = create_mock_client(post_value={"id": "item-1", "note": "Test"})
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_items_add(
+                "list-1",
+                note="2 cups flour",
+                quantity=2.0,
+                unit_id="unit-1",
+                food_id="food-1",
+                display="2 cups flour"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_items_add_bulk_empty_list(self):
+        """Test bulk add with empty list."""
+        mock_client = create_mock_client(post_value={"added": 0})
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_items_add_bulk("list-1", [])
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_items_check_unchecked(self):
+        """Test unchecking an item."""
+        mock_client = create_mock_client(put_value={"id": "item-1", "checked": False})
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_items_check("item-1", checked=False)
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_generate_mealplan_with_custom_dates(self):
+        """Test generating shopping list with custom date range."""
+        mock_client = create_mock_client()
+        mock_client.get.return_value = [
+            {
+                "id": "meal-1",
+                "recipe": {
+                    "id": "recipe-1",
+                    "recipeIngredient": [
+                        {"note": "2 cups flour"},
+                        {"note": "1 tsp salt"}
+                    ]
+                }
+            }
+        ]
+        mock_client.post.return_value = {"id": "list-1", "name": "Meal Plan Shopping"}
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_generate_from_mealplan(
+                start_date="2025-01-20",
+                end_date="2025-01-27"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_generate_mealplan_with_custom_name(self):
+        """Test generating shopping list with custom name."""
+        mock_client = create_mock_client()
+        mock_client.get.return_value = []
+        mock_client.post.return_value = {"id": "list-1", "name": "Custom List"}
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_generate_from_mealplan(list_name="Custom List")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_items_add_recipe_with_scale(self):
+        """Test adding recipe to shopping list with scale factor."""
+        mock_client = create_mock_client(post_value={"success": True})
+
+        with patch('src.tools.shopping.MealieClient', return_value=mock_client):
+            result = shopping_items_add_recipe("list-1", "recipe-1", scale=2.0)
+
+        data = json.loads(result)
+        assert isinstance(data, dict)

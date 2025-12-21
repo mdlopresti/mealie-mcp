@@ -148,6 +148,74 @@ class TestParser:
         data = json.loads(result)
         assert isinstance(data, (dict, list))
 
+    def test_parse_ingredient_with_custom_parser(self):
+        """Test parsing ingredient with custom parser."""
+        mock_client = create_mock_client(post_value={
+            "input": "1/2 cup butter",
+            "ingredient": {"quantity": 0.5, "unit": "cup", "food": "butter"}
+        })
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredient("1/2 cup butter", parser="brute")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_parse_ingredient_complex(self):
+        """Test parsing complex ingredient string."""
+        mock_client = create_mock_client(post_value={
+            "input": "2 cups all-purpose flour, sifted",
+            "ingredient": {
+                "quantity": 2.0,
+                "unit": "cup",
+                "food": "all-purpose flour",
+                "note": "sifted"
+            }
+        })
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredient("2 cups all-purpose flour, sifted")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_parse_ingredients_batch_large(self):
+        """Test parsing large batch of ingredients."""
+        ingredients = [
+            "2 cups flour",
+            "1 tsp salt",
+            "1/2 cup butter",
+            "3 eggs",
+            "1 cup milk"
+        ]
+        mock_response = [
+            {"input": ing, "ingredient": {"quantity": 1.0}}
+            for ing in ingredients
+        ]
+        mock_client = create_mock_client(post_value=mock_response)
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredients_batch(ingredients)
+
+        data = json.loads(result)
+        assert isinstance(data, (dict, list))
+
+    def test_parse_ingredients_batch_with_parser(self):
+        """Test batch parsing with custom parser."""
+        mock_client = create_mock_client(post_value=[
+            {"input": "2 cups flour", "ingredient": {"quantity": 2.0}},
+            {"input": "1 tsp salt", "ingredient": {"quantity": 1.0}}
+        ])
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredients_batch(
+                ["2 cups flour", "1 tsp salt"],
+                parser="nlp"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, (dict, list))
+
 
 class TestErrorHandling:
     """Test error handling across modules."""
