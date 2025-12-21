@@ -29,6 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `mealie_units_create` MCP tool to create new units (#26)
 - Enhanced `create_unit` method to MealieClient with description and abbreviation parameters (#26)
 - Added comprehensive test coverage for unit creation (#26)
+- Added complete cookbooks management with full CRUD operations (#24)
+- Added `mealie_cookbooks_list`, `mealie_cookbooks_create`, `mealie_cookbooks_get`, `mealie_cookbooks_update`, and `mealie_cookbooks_delete` MCP tools (#24)
+- Created `src/tools/cookbooks.py` with cookbook management functions (#24)
+- Added `list_cookbooks`, `create_cookbook`, `get_cookbook`, `update_cookbook`, and `delete_cookbook` methods to MealieClient (#24)
+- Added comprehensive test coverage for all cookbook operations (#24)
 
 ### Impact
 - Completes full CRUD functionality for all organizers (categories, tags, and kitchen tools)
@@ -36,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Allows programmatic category, tag, and tool management for bulk operations
 - Enables programmatic creation of food items for recipe import workflows (#25)
 - Enables programmatic creation of measurement units for recipe import workflows (#26)
+- Enables cookbook management for organizing recipes into themed collections (#24)
+- Supports meal planning workflows with cookbook-based recipe organization (#24)
 - Enables kitchen tool management during recipe imports
 - Provides complete foundation for recipe organization automation
 

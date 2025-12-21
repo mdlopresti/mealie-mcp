@@ -981,6 +981,57 @@ class MealieClient:
         return self.post("/api/units/merge", json=payload)
 
     # -------------------------------------------------------------------------
+    # Cookbooks Management
+    # -------------------------------------------------------------------------
+
+    def list_cookbooks(self) -> Dict[str, Any]:
+        """List all cookbooks."""
+        return self.get("/api/households/cookbooks")
+
+    def create_cookbook(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        slug: Optional[str] = None,
+        public: bool = False
+    ) -> Dict[str, Any]:
+        """Create a new cookbook."""
+        payload = {"name": name, "public": public}
+        if description is not None:
+            payload["description"] = description
+        if slug is not None:
+            payload["slug"] = slug
+        return self.post("/api/households/cookbooks", json=payload)
+
+    def get_cookbook(self, cookbook_id: str) -> Dict[str, Any]:
+        """Get a specific cookbook by ID."""
+        return self.get(f"/api/households/cookbooks/{cookbook_id}")
+
+    def update_cookbook(
+        self,
+        cookbook_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        slug: Optional[str] = None,
+        public: Optional[bool] = None
+    ) -> Dict[str, Any]:
+        """Update a cookbook."""
+        payload = {}
+        if name is not None:
+            payload["name"] = name
+        if description is not None:
+            payload["description"] = description
+        if slug is not None:
+            payload["slug"] = slug
+        if public is not None:
+            payload["public"] = public
+        return self.put(f"/api/households/cookbooks/{cookbook_id}", json=payload)
+
+    def delete_cookbook(self, cookbook_id: str) -> None:
+        """Delete a cookbook."""
+        self.delete(f"/api/households/cookbooks/{cookbook_id}")
+
+    # -------------------------------------------------------------------------
     # Recipe Image Upload
     # -------------------------------------------------------------------------
 
