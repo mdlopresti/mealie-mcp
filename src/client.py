@@ -660,6 +660,12 @@ class MealieClient:
         Raises:
             MealieAPIError: If bulk action fails
         """
+        # Convert recipe IDs to slugs (API requires slugs, not IDs)
+        recipe_slugs = []
+        for recipe_id in recipe_ids:
+            recipe = self.get(f"/api/recipes/{recipe_id}")
+            recipe_slugs.append(recipe["slug"])
+
         # Get all existing tags to look up IDs
         all_tags_response = self.list_tags()
         # Handle paginated response
@@ -679,7 +685,7 @@ class MealieClient:
                 tag_objects.append(new_tag)
 
         payload = {
-            "recipes": recipe_ids,
+            "recipes": recipe_slugs,  # Use slugs instead of IDs
             "tags": tag_objects
         }
 
@@ -699,6 +705,12 @@ class MealieClient:
         Raises:
             MealieAPIError: If bulk action fails
         """
+        # Convert recipe IDs to slugs (API requires slugs, not IDs)
+        recipe_slugs = []
+        for recipe_id in recipe_ids:
+            recipe = self.get(f"/api/recipes/{recipe_id}")
+            recipe_slugs.append(recipe["slug"])
+
         # Get all existing categories to look up IDs
         all_categories_response = self.list_categories()
         # Handle paginated response
@@ -718,7 +730,7 @@ class MealieClient:
                 category_objects.append(new_category)
 
         payload = {
-            "recipes": recipe_ids,
+            "recipes": recipe_slugs,  # Use slugs instead of IDs
             "categories": category_objects
         }
 
