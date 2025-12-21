@@ -16,6 +16,8 @@ from src.tools.mealplans import (
     mealplans_delete,
     mealplans_random,
     mealplans_search,
+    mealplans_delete_range,
+    mealplans_update_batch,
     mealplan_rules_list,
     mealplan_rules_get,
     mealplan_rules_create,
@@ -817,3 +819,246 @@ class TestMealPlansSearch:
         data = json.loads(result)
         assert data.get("success") is True
         assert data.get("count") == 3
+
+
+class TestMealPlansBatchOperations:
+    """Test meal plan batch operations."""
+
+    def test_delete_range_basic(self):
+        """Test basic delete range functionality."""
+        mock_plans = [
+            {"id": "meal-1", "date": "2025-01-20"},
+            {"id": "meal-2", "date": "2025-01-21"},
+            {"id": "meal-3", "date": "2025-01-22"}
+        ]
+        mock_client = create_mock_client(get_value=mock_plans, delete_value=None)
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_delete_range("2025-01-20", "2025-01-25")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("total_found") == 3
+        assert data.get("deleted") == 3
+        assert data.get("failed") == 0
+
+    def test_delete_range_with_failures(self):
+        """Test delete range with some failures."""
+        mock_plans = [
+            {"id": "meal-1", "date": "2025-01-20"},
+            {"id": "meal-2", "date": "2025-01-21"}
+        ]
+
+        # Create mock that fails on second delete
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.return_value = mock_plans
+
+        delete_count = [0]
+        def delete_side_effect(path):
+            delete_count[0] += 1
+            if delete_count[0] == 2:
+                raise ValueError("Delete failed")
+
+        mock_client.delete.side_effect = delete_side_effect
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_delete_range("2025-01-20", "2025-01-25")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("total_found") == 2
+        assert data.get("deleted") == 1
+        assert data.get("failed") == 1
+
+    def test_delete_range_api_error(self):
+        """Test delete range with API error."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = MealieAPIError(
+            "Not Found", status_code=404, response_body="No plans found"
+        )
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_delete_range("2025-01-01", "2025-01-31")
+
+        data = json.loads(result)
+        assert "error" in data
+        assert data.get("status_code") == 404
+
+    def test_update_batch_basic(self):
+        """Test basic batch update functionality."""
+        # Mock existing entries
+        existing_entry_1 = {
+            "id": "meal-1",
+            "date": "2025-01-20",
+            "entryType": "dinner",
+            "groupId": "group-1",
+            "userId": "user-1"
+        }
+        existing_entry_2 = {
+            "id": "meal-2",
+            "date": "2025-01-21",
+            "entryType": "lunch",
+            "groupId": "group-1",
+            "userId": "user-1"
+        }
+
+        # Mock updates
+        updated_entry_1 = {**existing_entry_1, "date": "2025-01-22"}
+        updated_entry_2 = {**existing_entry_2, "text": "New note"}
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+
+        def get_side_effect(path):
+            if "meal-1" in path:
+                return existing_entry_1
+            elif "meal-2" in path:
+                return existing_entry_2
+
+        def put_side_effect(path, json):
+            if "meal-1" in path:
+                return updated_entry_1
+            elif "meal-2" in path:
+                return updated_entry_2
+
+        mock_client.get.side_effect = get_side_effect
+        mock_client.put.side_effect = put_side_effect
+
+        updates = [
+            {"mealplan_id": "meal-1", "meal_date": "2025-01-22"},
+            {"mealplan_id": "meal-2", "text": "New note"}
+        ]
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update_batch(updates)
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("total_requested") == 2
+        assert data.get("updated") == 2
+        assert data.get("failed") == 0
+
+    def test_update_batch_missing_id(self):
+        """Test batch update with missing mealplan_id."""
+        updates = [
+            {"meal_date": "2025-01-22"}  # Missing mealplan_id
+        ]
+
+        mock_client = create_mock_client()
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update_batch(updates)
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("updated") == 0
+        assert data.get("failed") == 1
+
+    def test_update_batch_clear_fields(self):
+        """Test batch update with field clearing."""
+        existing_entry = {
+            "id": "meal-1",
+            "date": "2025-01-20",
+            "entryType": "dinner",
+            "groupId": "group-1",
+            "userId": "user-1",
+            "recipeId": "recipe-1",
+            "title": "Old title",
+            "text": "Old text"
+        }
+
+        updated_entry = {
+            **existing_entry,
+            "recipeId": None,
+            "title": None,
+            "text": None
+        }
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.return_value = existing_entry
+        mock_client.put.return_value = updated_entry
+
+        updates = [
+            {
+                "mealplan_id": "meal-1",
+                "recipe_id": "__CLEAR__",
+                "title": "__CLEAR__",
+                "text": "__CLEAR__"
+            }
+        ]
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update_batch(updates)
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("updated") == 1
+
+    def test_update_batch_partial_failure(self):
+        """Test batch update with partial failures."""
+        existing_entry = {
+            "id": "meal-1",
+            "date": "2025-01-20",
+            "entryType": "dinner",
+            "groupId": "group-1",
+            "userId": "user-1"
+        }
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+
+        get_count = [0]
+        def get_side_effect(path):
+            get_count[0] += 1
+            if get_count[0] == 2:
+                raise ValueError("Get failed")
+            return existing_entry
+
+        mock_client.get.side_effect = get_side_effect
+        mock_client.put.return_value = existing_entry
+
+        updates = [
+            {"mealplan_id": "meal-1", "meal_date": "2025-01-22"},
+            {"mealplan_id": "meal-2", "meal_date": "2025-01-23"}
+        ]
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update_batch(updates)
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("updated") == 1
+        assert data.get("failed") == 1
+
+    def test_update_batch_api_error(self):
+        """Test batch update with API error on individual item."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = MealieAPIError(
+            "Server Error", status_code=500, response_body="Internal error"
+        )
+
+        updates = [{"mealplan_id": "meal-1", "meal_date": "2025-01-22"}]
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update_batch(updates)
+
+        data = json.loads(result)
+        # Batch operations continue on error and report failures
+        assert data.get("success") is True
+        assert data.get("updated") == 0
+        assert data.get("failed") == 1
+        assert len(data.get("failures", [])) == 1

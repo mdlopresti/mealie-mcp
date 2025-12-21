@@ -726,6 +726,198 @@ def mealplans_search(
         return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
 
 
+def mealplans_delete_range(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+) -> str:
+    """Delete all meal plans in a date range.
+
+    This tool retrieves all meal plans in the specified date range and deletes
+    them one by one. Useful for clearing out old or incorrect meal plans.
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format (defaults to today)
+        end_date: End date in YYYY-MM-DD format (defaults to 7 days from start)
+
+    Returns:
+        JSON string with deletion results
+
+    Example:
+        # Delete all meal plans for January 2025
+        mealplans_delete_range("2025-01-01", "2025-01-31")
+    """
+    try:
+        # Default date range if not provided
+        if start_date is None:
+            start_date = date.today().isoformat()
+        if end_date is None:
+            start = date.fromisoformat(start_date)
+            end_date = (start + timedelta(days=7)).isoformat()
+
+        with MealieClient() as client:
+            # Get all meal plans in date range
+            all_plans = client.get(f"/api/households/mealplans?start_date={start_date}&end_date={end_date}")
+
+            # Delete each meal plan
+            deleted_count = 0
+            failed_deletes = []
+
+            for plan in all_plans:
+                plan_id = plan.get("id")
+                if not plan_id:
+                    continue
+
+                try:
+                    client.delete(f"/api/households/mealplans/{plan_id}")
+                    deleted_count += 1
+                except Exception as e:
+                    failed_deletes.append({
+                        "id": plan_id,
+                        "error": str(e)
+                    })
+
+            return json.dumps({
+                "success": True,
+                "date_range": {
+                    "start": start_date,
+                    "end": end_date
+                },
+                "total_found": len(all_plans),
+                "deleted": deleted_count,
+                "failed": len(failed_deletes),
+                "failures": failed_deletes if failed_deletes else []
+            }, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
+def mealplans_update_batch(
+    updates: list[dict]
+) -> str:
+    """Update multiple meal plans at once.
+
+    This tool updates multiple meal plan entries in a single call. Each update
+    should specify the meal plan ID and the fields to update.
+
+    Args:
+        updates: List of update dictionaries, each containing:
+            - mealplan_id (required): The meal plan entry ID to update
+            - meal_date (optional): New date in YYYY-MM-DD format
+            - entry_type (optional): New meal type (breakfast, lunch, dinner, side, snack)
+            - recipe_id (optional): New recipe ID or "__CLEAR__" to remove
+            - title (optional): New title or "__CLEAR__" to clear
+            - text (optional): New note or "__CLEAR__" to clear
+
+    Returns:
+        JSON string with batch update results
+
+    Examples:
+        # Update two meal plans at once
+        updates = [
+            {"mealplan_id": "meal-1", "meal_date": "2025-01-21"},
+            {"mealplan_id": "meal-2", "entry_type": "lunch", "text": "Updated note"}
+        ]
+        mealplans_update_batch(updates)
+
+        # Clear recipe from a meal plan
+        updates = [{"mealplan_id": "meal-1", "recipe_id": "__CLEAR__"}]
+        mealplans_update_batch(updates)
+    """
+    try:
+        with MealieClient() as client:
+            updated_count = 0
+            failed_updates = []
+            results = []
+
+            for update in updates:
+                mealplan_id = update.get("mealplan_id")
+                if not mealplan_id:
+                    failed_updates.append({
+                        "update": update,
+                        "error": "Missing mealplan_id"
+                    })
+                    continue
+
+                try:
+                    # Get the existing entry first to preserve required fields
+                    existing = client.get(f"/api/households/mealplans/{mealplan_id}")
+
+                    # Build the payload with required fields from existing entry
+                    payload = {
+                        "date": update.get("meal_date", existing.get("date")),
+                        "entryType": update.get("entry_type", existing.get("entryType")),
+                        "id": existing.get("id"),
+                        "groupId": existing.get("groupId"),
+                        "userId": existing.get("userId")
+                    }
+
+                    # Handle optional fields
+                    if "recipe_id" in update:
+                        if update["recipe_id"] == "__CLEAR__":
+                            payload["recipeId"] = None
+                        else:
+                            payload["recipeId"] = update["recipe_id"]
+                    elif "recipeId" in existing:
+                        payload["recipeId"] = existing.get("recipeId")
+
+                    if "title" in update:
+                        if update["title"] == "__CLEAR__":
+                            payload["title"] = None
+                        else:
+                            payload["title"] = update["title"]
+                    elif "title" in existing:
+                        payload["title"] = existing.get("title")
+
+                    if "text" in update:
+                        if update["text"] == "__CLEAR__":
+                            payload["text"] = None
+                        else:
+                            payload["text"] = update["text"]
+                    elif "text" in existing:
+                        payload["text"] = existing.get("text")
+
+                    # Update the meal plan
+                    updated = client.put(f"/api/households/mealplans/{mealplan_id}", json=payload)
+                    updated_count += 1
+                    results.append({
+                        "id": mealplan_id,
+                        "success": True,
+                        "updated": updated
+                    })
+
+                except Exception as e:
+                    failed_updates.append({
+                        "mealplan_id": mealplan_id,
+                        "update": update,
+                        "error": str(e)
+                    })
+
+            return json.dumps({
+                "success": True,
+                "total_requested": len(updates),
+                "updated": updated_count,
+                "failed": len(failed_updates),
+                "results": results,
+                "failures": failed_updates if failed_updates else []
+            }, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
 if __name__ == "__main__":
     """
     Test the meal plan tools against the live Mealie instance.
