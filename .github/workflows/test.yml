@@ -1,11 +1,7 @@
 name: Test
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_call:  # Allow this workflow to be called by other workflows
+  workflow_call:  # Only run when called by other workflows (docker.yml, release.yml)
 
 # Cancel in-progress runs for the same workflow and branch
 concurrency:
