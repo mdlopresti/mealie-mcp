@@ -14,6 +14,7 @@ from src.tools.foods import (
     foods_delete,
     foods_merge,
     units_list,
+    units_create,
     units_get,
     units_update,
     units_delete,
@@ -119,6 +120,22 @@ class TestUnits:
 
         data = json.loads(result)
         assert isinstance(data, dict)
+
+    def test_units_create(self):
+        """Test creating a unit."""
+        mock_data = {"id": "123", "name": "teaspoon", "abbreviation": "tsp"}
+        mock_client = create_mock_client(post_value=mock_data)
+        mock_client.create_unit = MagicMock(return_value=mock_data)
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = units_create(name="teaspoon", abbreviation="tsp")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+        assert data["success"] is True
+        assert "unit" in data
+        assert data["message"] == "Unit created successfully"
+        mock_client.create_unit.assert_called_once_with("teaspoon", None, "tsp")
 
     def test_units_get(self):
         """Test getting a unit."""

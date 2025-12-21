@@ -84,6 +84,7 @@ from tools.foods import (
     foods_delete,
     foods_merge,
     units_list,
+    units_create,
     units_get,
     units_update,
     units_delete,
@@ -1147,6 +1148,25 @@ def mealie_units_list(page: int = 1, per_page: int = 50) -> str:
         JSON string with paginated unit list
     """
     return units_list(page=page, per_page=per_page)
+
+
+@mcp.tool()
+def mealie_units_create(
+    name: str,
+    description: str = None,
+    abbreviation: str = None
+) -> str:
+    """Create a new unit.
+
+    Args:
+        name: Name for the new unit
+        description: Optional description
+        abbreviation: Optional abbreviation (e.g., "tsp", "oz")
+
+    Returns:
+        JSON string with created unit details
+    """
+    return units_create(name=name, description=description, abbreviation=abbreviation)
 
 
 @mcp.tool()

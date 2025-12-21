@@ -549,12 +549,19 @@ class MealieClient:
             payload["labelId"] = label_id
         return self.post("/api/foods", json=payload)
 
-    def create_unit(self, name: str) -> Dict[str, Any]:
+    def create_unit(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        abbreviation: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Create a new measurement unit.
 
         Args:
             name: The unit name
+            description: Optional description
+            abbreviation: Optional abbreviation (e.g., "tsp", "oz")
 
         Returns:
             Created unit data with id
@@ -563,6 +570,10 @@ class MealieClient:
             MealieAPIError: If creation fails
         """
         payload = {"name": name}
+        if description is not None:
+            payload["description"] = description
+        if abbreviation is not None:
+            payload["abbreviation"] = abbreviation
         return self.post("/api/units", json=payload)
 
     def update_recipe_ingredients(self, slug: str, ingredients: list[Dict[str, Any]]) -> Dict[str, Any]:
