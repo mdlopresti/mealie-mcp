@@ -186,6 +186,97 @@ def categories_delete(category_id: str) -> str:
 # Tags Management
 # -----------------------------------------------------------------------------
 
+def tags_list() -> str:
+    """List all tags.
+
+    Returns:
+        JSON string with list of tags
+    """
+    try:
+        with MealieClient() as client:
+            tags = client.list_tags()
+            return json.dumps({
+                "success": True,
+                "tags": tags
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def tags_create(name: str) -> str:
+    """Create a new tag.
+
+    Args:
+        name: Name for the new tag
+
+    Returns:
+        JSON string with created tag details
+    """
+    try:
+        with MealieClient() as client:
+            tag = client.create_tag(name)
+            return json.dumps({
+                "success": True,
+                "message": "Tag created successfully",
+                "tag": tag
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def tags_get(tag_id: str) -> str:
+    """Get a tag by ID.
+
+    Args:
+        tag_id: The tag's ID
+
+    Returns:
+        JSON string with tag details
+    """
+    try:
+        with MealieClient() as client:
+            tag = client.get_tag(tag_id)
+            return json.dumps({
+                "success": True,
+                "tag": tag
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 def tags_update(
     tag_id: str,
     name: Optional[str] = None,

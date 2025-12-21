@@ -13,12 +13,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `mealie_categories_get` MCP tool to get category by ID (#21)
 - Added `get_category` method to MealieClient for retrieving category details (#21)
 - Added comprehensive test coverage for all category operations (#21)
+- Added `mealie_tags_list` MCP tool to list all tags (#22)
+- Added `mealie_tags_create` MCP tool to create new tags (#22)
+- Added `mealie_tags_get` MCP tool to get tag by ID (#22)
+- Added `get_tag` method to MealieClient for retrieving tag details (#22)
+- Added comprehensive test coverage for all tag operations (#22)
 
 ### Impact
-- Completes full CRUD functionality for categories
-- Enables automated recipe organization workflows
-- Allows programmatic category management for bulk operations
-- Provides foundation for implementing similar LIST/CREATE/GET operations for tags and tools
+- Completes full CRUD functionality for categories and tags
+- Enables automated recipe organization workflows with both categories and tags
+- Allows programmatic category and tag management for bulk operations
+- Enables tag management during recipe imports
+- Provides foundation for implementing similar LIST/CREATE/GET operations for tools
 
 ## [1.7.2] - 2025-12-21
 
