@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.9] - 2025-12-21
+
+### Added
+- Comprehensive test suite for client initialization and error parsing
+  - 20 new tests for MealieClient basic functionality
+  - Tests for environment variable configuration and URL building
+  - Tests for error message parsing (422, 500, 409, 404)
+  - Tests for MealieAPIError exception handling
+  - Tests for context manager support
+
+### Changed
+- Improved code coverage from 14% to 15%
+- client.py coverage improved from 32% to 36%
+- Total test count increased from 54 to 74 tests
+
 ## [1.6.8] - 2025-12-21
 
 ### Added
