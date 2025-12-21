@@ -603,9 +603,9 @@ def mealie_mealplans_update(
         mealplan_id: The meal plan entry ID to update
         meal_date: Optional new date in YYYY-MM-DD format
         entry_type: Optional new meal type - breakfast, lunch, dinner, side, or snack
-        recipe_id: Optional new recipe ID
-        title: Optional new title
-        text: Optional new note or description
+        recipe_id: New recipe ID. Pass "__CLEAR__" to remove recipe association.
+        title: New title. Pass "__CLEAR__" to clear the title.
+        text: New note. Pass "__CLEAR__" to clear the note.
 
     Returns:
         JSON string with updated meal plan entry

@@ -123,6 +123,50 @@ Restart Claude Code and try:
 Can you search for recipes in Mealie?
 ```
 
+## Usage Examples
+
+### Clearing Optional Fields
+
+To clear an optional field (remove its value), pass the special sentinel value `"__CLEAR__"`:
+
+```python
+# Remove recipe association from a meal plan entry
+mealie_mealplans_update(
+    mealplan_id="abc-123",
+    recipe_id="__CLEAR__"
+)
+
+# Clear the title from an entry
+mealie_mealplans_update(
+    mealplan_id="abc-123",
+    title="__CLEAR__"
+)
+
+# Clear the text/notes from an entry
+mealie_mealplans_update(
+    mealplan_id="abc-123",
+    text="__CLEAR__"
+)
+
+# Clear multiple fields at once
+mealie_mealplans_update(
+    mealplan_id="abc-123",
+    recipe_id="__CLEAR__",
+    title="__CLEAR__",
+    text="__CLEAR__"
+)
+```
+
+To leave a field unchanged, simply omit it from the call:
+
+```python
+# Update only the date, preserving all other fields
+mealie_mealplans_update(
+    mealplan_id="abc-123",
+    meal_date="2025-12-25"
+)
+```
+
 ## Development
 
 ### Local Development (without Docker)

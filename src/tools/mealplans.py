@@ -19,6 +19,9 @@ except ImportError:
     sys.path.insert(0, str(Path(__file__).parent.parent))
     from client import MealieClient, MealieAPIError
 
+# Sentinel value for clearing optional fields
+CLEAR_FIELD = "__CLEAR__"
+
 
 def mealplans_list(
     start_date: Optional[str] = None,
@@ -242,9 +245,9 @@ def mealplans_update(
         mealplan_id: The meal plan entry ID to update
         meal_date: Optional new date in YYYY-MM-DD format
         entry_type: Optional new meal type - breakfast, lunch, dinner, side, or snack
-        recipe_id: Optional new recipe ID
-        title: Optional new title
-        text: Optional new note or description
+        recipe_id: New recipe ID. Pass "__CLEAR__" to remove recipe association.
+        title: New title. Pass "__CLEAR__" to clear the title.
+        text: New note. Pass "__CLEAR__" to clear the note.
 
     Returns:
         JSON string with updated meal plan entry
@@ -274,18 +277,27 @@ def mealplans_update(
                 "entryType": (entry_type.lower() if entry_type else existing.get("entryType")),
             }
 
-            # Handle optional fields
-            if recipe_id is not None:
+            # Handle optional fields with clearing support
+            # Handle recipe_id with clearing support
+            if recipe_id == CLEAR_FIELD:
+                payload["recipeId"] = None  # Send null to API to clear
+            elif recipe_id is not None:
                 payload["recipeId"] = recipe_id
             elif "recipeId" in existing:
                 payload["recipeId"] = existing["recipeId"]
 
-            if title is not None:
+            # Handle title with clearing support
+            if title == CLEAR_FIELD:
+                payload["title"] = None  # Send null to API to clear
+            elif title is not None:
                 payload["title"] = title
             elif "title" in existing:
                 payload["title"] = existing["title"]
 
-            if text is not None:
+            # Handle text with clearing support
+            if text == CLEAR_FIELD:
+                payload["text"] = None  # Send null to API to clear
+            elif text is not None:
                 payload["text"] = text
             elif "text" in existing:
                 payload["text"] = existing["text"]
