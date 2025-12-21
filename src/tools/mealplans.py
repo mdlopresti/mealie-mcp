@@ -645,6 +645,87 @@ def mealplan_rules_delete(rule_id: str) -> str:
         return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
 
 
+def mealplans_search(
+    query: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None
+) -> str:
+    """Search meal plans by recipe name, title, or text content.
+
+    This tool searches through meal plans in a date range and returns
+    entries matching the search query. The search is case-insensitive
+    and matches against:
+    - Recipe names (if a recipe is assigned)
+    - Entry titles
+    - Entry text/notes
+
+    Args:
+        query: Search term to filter meal plans (case-insensitive)
+        start_date: Start date in YYYY-MM-DD format (defaults to today)
+        end_date: End date in YYYY-MM-DD format (defaults to 7 days from start)
+
+    Returns:
+        JSON string with matching meal plan entries
+
+    Examples:
+        # Find all meal plans with "pork" in recipe name/title/notes
+        mealplans_search("pork")
+
+        # Search within specific date range
+        mealplans_search("freezer meal", "2025-01-01", "2025-01-31")
+    """
+    try:
+        # Default date range if not provided
+        if start_date is None:
+            start_date = date.today().isoformat()
+        if end_date is None:
+            start = date.fromisoformat(start_date)
+            end_date = (start + timedelta(days=7)).isoformat()
+
+        with MealieClient() as client:
+            # Get all meal plans in date range
+            all_plans = client.get(f"/api/households/mealplans?start_date={start_date}&end_date={end_date}")
+
+            # Normalize query to lowercase for case-insensitive search
+            query_lower = query.lower()
+
+            # Filter meal plans by query
+            matching_plans = []
+            for plan in all_plans:
+                # Search in recipe name if present
+                recipe_name = plan.get("recipe", {}).get("name", "") if isinstance(plan.get("recipe"), dict) else ""
+                # Search in entry title (handle None values)
+                title = plan.get("title") or ""
+                # Search in entry text/notes (handle None values)
+                text = plan.get("text") or ""
+
+                # Check if query matches any field
+                if (query_lower in recipe_name.lower() or
+                    query_lower in title.lower() or
+                    query_lower in text.lower()):
+                    matching_plans.append(plan)
+
+            return json.dumps({
+                "success": True,
+                "query": query,
+                "date_range": {
+                    "start": start_date,
+                    "end": end_date
+                },
+                "count": len(matching_plans),
+                "meal_plans": matching_plans
+            }, indent=2)
+
+    except MealieAPIError as e:
+        return json.dumps({
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }, indent=2)
+    except Exception as e:
+        return json.dumps({"error": f"Unexpected error: {str(e)}"}, indent=2)
+
+
 if __name__ == "__main__":
     """
     Test the meal plan tools against the live Mealie instance.

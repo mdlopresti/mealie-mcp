@@ -15,6 +15,7 @@ from src.tools.mealplans import (
     mealplans_update,
     mealplans_delete,
     mealplans_random,
+    mealplans_search,
     mealplan_rules_list,
     mealplan_rules_get,
     mealplan_rules_create,
@@ -606,3 +607,213 @@ class TestMealPlansFinalPush:
 
         data = json.loads(result)
         assert "error" in data
+
+
+class TestMealPlansSearch:
+    """Test meal plan search functionality."""
+
+    def test_search_basic(self):
+        """Test basic meal plan search."""
+        mock_plans = [
+            {
+                "id": "1",
+                "date": "2025-01-20",
+                "entryType": "dinner",
+                "recipe": {"id": "recipe-1", "name": "Pork Chops", "slug": "pork-chops"},
+                "title": None,
+                "text": None
+            },
+            {
+                "id": "2",
+                "date": "2025-01-21",
+                "entryType": "lunch",
+                "recipe": {"id": "recipe-2", "name": "Chicken Soup", "slug": "chicken-soup"},
+                "title": None,
+                "text": None
+            }
+        ]
+        mock_client = create_mock_client(get_value=mock_plans)
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("pork")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("count") == 1
+        assert data["meal_plans"][0]["recipe"]["name"] == "Pork Chops"
+
+    def test_search_case_insensitive(self):
+        """Test case-insensitive search."""
+        mock_plans = [
+            {
+                "id": "1",
+                "date": "2025-01-20",
+                "entryType": "dinner",
+                "recipe": {"id": "recipe-1", "name": "PORK CHOPS", "slug": "pork-chops"},
+                "title": None,
+                "text": None
+            }
+        ]
+        mock_client = create_mock_client(get_value=mock_plans)
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("pork")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("count") == 1
+
+    def test_search_by_title(self):
+        """Test search matching entry title."""
+        mock_plans = [
+            {
+                "id": "1",
+                "date": "2025-01-20",
+                "entryType": "snack",
+                "recipe": None,
+                "title": "Freezer meal prep",
+                "text": None
+            }
+        ]
+        mock_client = create_mock_client(get_value=mock_plans)
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("freezer")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("count") == 1
+
+    def test_search_by_text(self):
+        """Test search matching entry text."""
+        mock_plans = [
+            {
+                "id": "1",
+                "date": "2025-01-20",
+                "entryType": "dinner",
+                "recipe": {"id": "recipe-1", "name": "Pasta", "slug": "pasta"},
+                "title": None,
+                "text": "freezer meal from batch cooking"
+            }
+        ]
+        mock_client = create_mock_client(get_value=mock_plans)
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("freezer")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("count") == 1
+
+    def test_search_no_results(self):
+        """Test search with no matching results."""
+        mock_plans = [
+            {
+                "id": "1",
+                "date": "2025-01-20",
+                "entryType": "dinner",
+                "recipe": {"id": "recipe-1", "name": "Pasta", "slug": "pasta"},
+                "title": None,
+                "text": None
+            }
+        ]
+        mock_client = create_mock_client(get_value=mock_plans)
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("nonexistent")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("count") == 0
+        assert data["meal_plans"] == []
+
+    def test_search_with_date_range(self):
+        """Test search with custom date range."""
+        mock_plans = [
+            {
+                "id": "1",
+                "date": "2025-01-15",
+                "entryType": "dinner",
+                "recipe": {"id": "recipe-1", "name": "Pork Chops", "slug": "pork-chops"},
+                "title": None,
+                "text": None
+            }
+        ]
+        mock_client = create_mock_client(get_value=mock_plans)
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("pork", start_date="2025-01-01", end_date="2025-01-31")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("date_range")["start"] == "2025-01-01"
+        assert data.get("date_range")["end"] == "2025-01-31"
+
+    def test_search_api_error(self):
+        """Test search with API error."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = MealieAPIError(
+            "Server Error", status_code=500, response_body="Internal error"
+        )
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("pork")
+
+        data = json.loads(result)
+        assert "error" in data
+        assert data.get("status_code") == 500
+
+    def test_search_unexpected_error(self):
+        """Test search with unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = ValueError("Unexpected error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("pork")
+
+        data = json.loads(result)
+        assert "error" in data
+        assert "Unexpected error" in data["error"]
+
+    def test_search_multiple_field_matches(self):
+        """Test search matching multiple fields across entries."""
+        mock_plans = [
+            {
+                "id": "1",
+                "date": "2025-01-20",
+                "entryType": "dinner",
+                "recipe": {"id": "recipe-1", "name": "Pork Chops", "slug": "pork-chops"},
+                "title": None,
+                "text": None
+            },
+            {
+                "id": "2",
+                "date": "2025-01-21",
+                "entryType": "lunch",
+                "recipe": None,
+                "title": "Leftover pork",
+                "text": "From yesterday's dinner"
+            },
+            {
+                "id": "3",
+                "date": "2025-01-22",
+                "entryType": "dinner",
+                "recipe": {"id": "recipe-2", "name": "Chicken", "slug": "chicken"},
+                "title": None,
+                "text": "Made with pork sausage"
+            }
+        ]
+        mock_client = create_mock_client(get_value=mock_plans)
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_search("pork")
+
+        data = json.loads(result)
+        assert data.get("success") is True
+        assert data.get("count") == 3
