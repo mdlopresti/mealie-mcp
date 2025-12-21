@@ -89,6 +89,9 @@ from tools.foods import (
     units_merge,
 )
 from tools.organizers import (
+    categories_list,
+    categories_create,
+    categories_get,
     categories_update,
     categories_delete,
     tags_update,
@@ -1184,6 +1187,42 @@ def mealie_units_merge(from_unit_id: str, to_unit_id: str) -> str:
 # -----------------------------------------------------------------------------
 # Organizers Management Tools (Categories, Tags, Tools)
 # -----------------------------------------------------------------------------
+
+@mcp.tool()
+def mealie_categories_list() -> str:
+    """List all categories.
+
+    Returns:
+        JSON string with list of categories
+    """
+    return categories_list()
+
+
+@mcp.tool()
+def mealie_categories_create(name: str) -> str:
+    """Create a new category.
+
+    Args:
+        name: Name for the new category
+
+    Returns:
+        JSON string with created category details
+    """
+    return categories_create(name=name)
+
+
+@mcp.tool()
+def mealie_categories_get(category_id: str) -> str:
+    """Get a category by ID.
+
+    Args:
+        category_id: The category's ID
+
+    Returns:
+        JSON string with category details
+    """
+    return categories_get(category_id=category_id)
+
 
 @mcp.tool()
 def mealie_categories_update(
