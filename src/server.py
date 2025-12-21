@@ -50,6 +50,8 @@ from tools.mealplans import (
     mealplans_random,
     mealplans_get_by_date,
     mealplans_search,
+    mealplans_delete_range,
+    mealplans_update_batch,
     mealplan_rules_list,
     mealplan_rules_get,
     mealplan_rules_create,
@@ -675,6 +677,64 @@ def mealie_mealplans_search(
         mealie_mealplans_search("freezer meal", "2025-01-01", "2025-01-31")
     """
     return mealplans_search(query=query, start_date=start_date, end_date=end_date)
+
+
+@mcp.tool()
+def mealie_mealplans_delete_range(
+    start_date: str | None = None,
+    end_date: str | None = None
+) -> str:
+    """Delete all meal plans in a date range.
+
+    This tool retrieves all meal plans in the specified date range and deletes
+    them one by one. Useful for clearing out old or incorrect meal plans.
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format (defaults to today)
+        end_date: End date in YYYY-MM-DD format (defaults to 7 days from start)
+
+    Returns:
+        JSON string with deletion results
+
+    Example:
+        # Delete all meal plans for January 2025
+        mealie_mealplans_delete_range("2025-01-01", "2025-01-31")
+    """
+    return mealplans_delete_range(start_date=start_date, end_date=end_date)
+
+
+@mcp.tool()
+def mealie_mealplans_update_batch(updates: list[dict]) -> str:
+    """Update multiple meal plans at once.
+
+    This tool updates multiple meal plan entries in a single call. Each update
+    should specify the meal plan ID and the fields to update.
+
+    Args:
+        updates: List of update dictionaries, each containing:
+            - mealplan_id (required): The meal plan entry ID to update
+            - meal_date (optional): New date in YYYY-MM-DD format
+            - entry_type (optional): New meal type (breakfast, lunch, dinner, side, snack)
+            - recipe_id (optional): New recipe ID or "__CLEAR__" to remove
+            - title (optional): New title or "__CLEAR__" to clear
+            - text (optional): New note or "__CLEAR__" to clear
+
+    Returns:
+        JSON string with batch update results
+
+    Examples:
+        # Update two meal plans at once
+        updates = [
+            {"mealplan_id": "meal-1", "meal_date": "2025-01-21"},
+            {"mealplan_id": "meal-2", "entry_type": "lunch", "text": "Updated note"}
+        ]
+        mealie_mealplans_update_batch(updates)
+
+        # Clear recipe from a meal plan
+        updates = [{"mealplan_id": "meal-1", "recipe_id": "__CLEAR__"}]
+        mealie_mealplans_update_batch(updates)
+    """
+    return mealplans_update_batch(updates=updates)
 
 
 @mcp.tool()
