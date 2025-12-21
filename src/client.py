@@ -5,6 +5,7 @@ A robust synchronous HTTP client for interacting with the Mealie API.
 Includes error handling, retry logic, and connection testing.
 """
 
+import json
 import os
 import time
 from typing import Any, Dict, Optional, Union
@@ -14,12 +15,159 @@ import httpx
 from dotenv import load_dotenv
 
 
+# Error message templates for common status codes
+_ERROR_TEMPLATES = {
+    422: {
+        "title": "Validation Error",
+        "suggestions": [
+            "Check that all required fields are provided",
+            "Verify field values match expected types and formats",
+            "Review the error details below for specific field issues"
+        ]
+    },
+    500: {
+        "title": "Server Error",
+        "suggestions": [
+            "The Mealie server encountered an internal error",
+            "This may be a bug in Mealie - check server logs: kubectl logs -f <pod-name> -n mealie",
+            "Try the operation again, or simplify the request if possible"
+        ]
+    },
+    409: {
+        "title": "Conflict",
+        "suggestions": [
+            "A resource with this name or identifier may already exist",
+            "Try using a different name or identifier",
+            "Use update/patch operations instead of create for existing resources"
+        ],
+        "known_issues": {
+            "Recipe already exists": "https://github.com/mdlopresti/mealie-mcp/issues/7"
+        }
+    }
+}
+
+
+def _parse_api_error(status_code: int, response_text: str) -> Dict[str, Any]:
+    """
+    Parse API error response into human-readable format.
+
+    Args:
+        status_code: HTTP status code
+        response_text: Raw response body text
+
+    Returns:
+        Dict with parsed error details:
+        - message: Human-readable error message
+        - details: Extracted error details (field names, validation info, etc.)
+        - suggestions: List of actionable suggestions
+        - raw_response: Original response text (for debugging)
+    """
+    result = {
+        "message": f"HTTP {status_code} Error",
+        "details": [],
+        "suggestions": [],
+        "raw_response": response_text
+    }
+
+    # Get template for this status code
+    template = _ERROR_TEMPLATES.get(status_code, {})
+    if template:
+        result["message"] = f"{template.get('title', 'Error')} (HTTP {status_code})"
+        result["suggestions"] = template.get("suggestions", [])
+
+    # Try to parse JSON response
+    try:
+        error_data = json.loads(response_text)
+    except (json.JSONDecodeError, ValueError):
+        # Non-JSON response - return raw text
+        result["details"].append(f"Raw error: {response_text[:200]}")
+        return result
+
+    # Handle different error response formats
+
+    # Format 1: FastAPI validation error (422)
+    # {"detail": [{"loc": ["body", "field"], "msg": "...", "type": "..."}]}
+    if isinstance(error_data, dict) and "detail" in error_data:
+        detail = error_data["detail"]
+
+        if isinstance(detail, list):
+            # Multiple validation errors
+            for err in detail:
+                if isinstance(err, dict):
+                    # Extract field path
+                    field_path = " -> ".join(str(x) for x in err.get("loc", []))
+                    msg = err.get("msg", "validation error")
+                    err_type = err.get("type", "unknown")
+
+                    result["details"].append(f"Field '{field_path}': {msg} (type: {err_type})")
+                else:
+                    result["details"].append(str(err))
+        elif isinstance(detail, str):
+            # Single error message
+            result["details"].append(detail)
+
+            # Check for known issues
+            for known_msg, issue_url in template.get("known_issues", {}).items():
+                if known_msg.lower() in detail.lower():
+                    result["suggestions"].append(f"Known issue: {issue_url}")
+        else:
+            result["details"].append(f"Unexpected detail format: {detail}")
+
+    # Format 2: Simple error object
+    # {"error": "message"}
+    elif isinstance(error_data, dict) and "error" in error_data:
+        result["details"].append(error_data["error"])
+
+    # Format 3: Message field
+    # {"message": "error message"}
+    elif isinstance(error_data, dict) and "message" in error_data:
+        result["details"].append(error_data["message"])
+
+    # Format 4: Unknown structure - dump what we can
+    else:
+        # Try to extract any useful strings
+        if isinstance(error_data, dict):
+            for key, value in error_data.items():
+                if isinstance(value, str):
+                    result["details"].append(f"{key}: {value}")
+                elif isinstance(value, list):
+                    result["details"].append(f"{key}: {', '.join(str(x) for x in value[:3])}")
+        else:
+            result["details"].append(f"Unexpected error format: {str(error_data)[:200]}")
+
+    return result
+
+
 class MealieAPIError(Exception):
     """Base exception for Mealie API errors."""
 
     def __init__(self, message: str, status_code: Optional[int] = None, response_body: Optional[str] = None):
         self.status_code = status_code
         self.response_body = response_body
+
+        # Parse error response for better messages
+        self.parsed_details = None
+        if status_code and response_body:
+            self.parsed_details = _parse_api_error(status_code, response_body)
+
+            # Build enhanced message
+            if self.parsed_details:
+                parts = [self.parsed_details["message"]]
+
+                # Add details
+                if self.parsed_details["details"]:
+                    parts.append("\nDetails:")
+                    for detail in self.parsed_details["details"]:
+                        parts.append(f"  - {detail}")
+
+                # Add suggestions
+                if self.parsed_details["suggestions"]:
+                    parts.append("\nSuggestions:")
+                    for suggestion in self.parsed_details["suggestions"]:
+                        parts.append(f"  - {suggestion}")
+
+                message = "\n".join(parts)
+
         super().__init__(message)
 
 
@@ -186,8 +334,9 @@ class MealieClient:
             except httpx.HTTPStatusError as e:
                 # For 4xx errors, don't retry
                 if 400 <= e.response.status_code < 500:
+                    # MealieAPIError will parse the response and create a helpful message
                     raise MealieAPIError(
-                        f"Client error {e.response.status_code}: {e.response.text}",
+                        f"HTTP {e.response.status_code} error",
                         status_code=e.response.status_code,
                         response_body=e.response.text,
                     )
@@ -198,8 +347,9 @@ class MealieClient:
                     time.sleep(delay)
                     continue
 
+                # Final 5xx error after all retries
                 raise MealieAPIError(
-                    f"Server error {e.response.status_code}: {e.response.text}",
+                    f"HTTP {e.response.status_code} error",
                     status_code=e.response.status_code,
                     response_body=e.response.text,
                 )
