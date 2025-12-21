@@ -1,0 +1,14 @@
+# Development dependencies for testing and type checking
+
+# Base requirements
+-r requirements.txt
+
+# Testing
+pytest>=8.0.0
+pytest-cov>=4.1.0
+
+# Type checking
+mypy>=1.8.0
+
+# Required for testing (already in requirements.txt but listed for clarity)
+# fastmcp>=0.1.0  # Imported via -r requirements.txt

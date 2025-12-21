@@ -20,7 +20,9 @@ ENV/
 # Testing
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
+.mypy_cache/
 
 # Build artifacts
 dist/

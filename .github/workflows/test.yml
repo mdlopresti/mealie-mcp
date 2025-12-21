@@ -1,0 +1,181 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_call:  # Allow this workflow to be called by other workflows
+
+# Cancel in-progress runs for the same workflow and branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Check Python syntax (all files)
+        run: |
+          echo "Checking Python syntax for all files in src/..."
+          find src -name "*.py" -print0 | while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            python -m py_compile "$file"
+          done
+          echo "All Python files have valid syntax"
+
+  type-check:
+    name: Type Checking with mypy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run mypy type checking
+        # Phase 1: Non-blocking - reports issues but doesn't fail CI
+        # Future phases will make this blocking after fixing existing issues
+        continue-on-error: true
+        run: |
+          echo "Running mypy type checking (informational only)..."
+          mypy --version
+          mypy src/ || echo "Type checking found issues - see output above"
+
+  smoke-test:
+    name: Smoke Tests with Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run smoke tests with coverage
+        run: |
+          pytest tests/test_smoke.py -v --tb=short \
+            --cov=src \
+            --cov-report=term \
+            --cov-report=json \
+            --cov-report=html
+
+      - name: Extract and display coverage percentage
+        id: coverage
+        run: |
+          # Extract coverage percentage from coverage.json
+          COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])")
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
+          echo "=== Coverage Summary ==="
+          echo "Total Coverage: ${COVERAGE}%"
+
+          # Save coverage to file for artifact
+          echo "$COVERAGE" > coverage-percentage.txt
+
+      - name: Download baseline coverage (PR only)
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        continue-on-error: true
+        with:
+          name: coverage-baseline
+          path: baseline/
+
+      - name: Compare coverage to baseline (PR only)
+        if: github.event_name == 'pull_request'
+        run: |
+          NEW_COVERAGE="${{ steps.coverage.outputs.coverage }}"
+
+          if [ -f baseline/coverage-percentage.txt ]; then
+            BASELINE_COVERAGE=$(cat baseline/coverage-percentage.txt)
+            echo "=== Coverage Comparison ==="
+            echo "Baseline Coverage: ${BASELINE_COVERAGE}%"
+            echo "Current Coverage:  ${NEW_COVERAGE}%"
+
+            # Calculate difference using bc for floating point
+            DIFF=$(echo "$NEW_COVERAGE - $BASELINE_COVERAGE" | bc)
+            echo "Difference:        ${DIFF}%"
+
+            # Check if coverage decreased by more than 0.5%
+            THRESHOLD="-0.5"
+            if (( $(echo "$DIFF < $THRESHOLD" | bc -l) )); then
+              echo "❌ Coverage decreased by more than 0.5%!"
+              echo "This PR reduces test coverage significantly."
+              exit 1
+            else
+              echo "✅ Coverage check passed"
+              if (( $(echo "$DIFF >= 0" | bc -l) )); then
+                echo "Coverage improved by ${DIFF}%"
+              else
+                echo "Coverage decreased by ${DIFF#-}% (within acceptable threshold)"
+              fi
+            fi
+          else
+            echo "⚠️  No baseline coverage found - this may be the first run"
+            echo "Current coverage will be used as baseline going forward"
+          fi
+
+      - name: Upload coverage baseline (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: coverage-baseline
+          path: coverage-percentage.txt
+          retention-days: 90
+
+      - name: Upload coverage report as artifact
+        if: always()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: coverage-report
+          path: |
+            coverage.json
+            htmlcov/
+          retention-days: 7
+
+      - name: Verify all modules can be imported
+        run: |
+          python -c "import sys; sys.path.insert(0, 'src'); import server"
+          python -c "import sys; sys.path.insert(0, 'src'); from client import MealieClient, MealieAPIError"
+          echo "All critical imports successful"
