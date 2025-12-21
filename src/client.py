@@ -1088,6 +1088,10 @@ class MealieClient:
         """Create a new tag."""
         return self.post("/api/organizers/tags", json={"name": name})
 
+    def get_tag(self, tag_id: str) -> Dict[str, Any]:
+        """Get a tag by ID."""
+        return self.get(f"/api/organizers/tags/{tag_id}")
+
     def update_category(
         self,
         category_id: str,

@@ -12,6 +12,9 @@ from src.tools.organizers import (
     categories_get,
     categories_update,
     categories_delete,
+    tags_list,
+    tags_create,
+    tags_get,
     tags_update,
     tags_delete,
     tools_update,
@@ -30,9 +33,12 @@ def create_mock_client(get_value=None, post_value=None, patch_value=None, delete
         mock.get.return_value = get_value
         mock.list_categories = MagicMock(return_value=get_value)
         mock.get_category = MagicMock(return_value=get_value)
+        mock.list_tags = MagicMock(return_value=get_value)
+        mock.get_tag = MagicMock(return_value=get_value)
     if post_value is not None:
         mock.post.return_value = post_value
         mock.create_category = MagicMock(return_value=post_value)
+        mock.create_tag = MagicMock(return_value=post_value)
     if patch_value is not None:
         mock.patch.return_value = patch_value
         mock.update_category = MagicMock(return_value=patch_value)
@@ -124,6 +130,49 @@ class TestCategories:
 
 class TestTags:
     """Test tag management operations."""
+
+    def test_tags_list(self):
+        """Test listing tags."""
+        mock_data = {"items": [{"id": "1", "name": "Vegetarian", "slug": "vegetarian"}]}
+        mock_client = create_mock_client(get_value=mock_data)
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tags_list()
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+        assert data["success"] is True
+        assert "tags" in data
+        mock_client.list_tags.assert_called_once()
+
+    def test_tags_create(self):
+        """Test creating a tag."""
+        mock_data = {"id": "123", "name": "Vegetarian", "slug": "vegetarian"}
+        mock_client = create_mock_client(post_value=mock_data)
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tags_create(name="Vegetarian")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+        assert data["success"] is True
+        assert "tag" in data
+        assert data["message"] == "Tag created successfully"
+        mock_client.create_tag.assert_called_once_with("Vegetarian")
+
+    def test_tags_get(self):
+        """Test getting a tag by ID."""
+        mock_data = {"id": "123", "name": "Vegetarian", "slug": "vegetarian"}
+        mock_client = create_mock_client(get_value=mock_data)
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tags_get(tag_id="123")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+        assert data["success"] is True
+        assert "tag" in data
+        mock_client.get_tag.assert_called_once_with("123")
 
     def test_tags_update(self):
         """Test updating a tag."""

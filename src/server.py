@@ -94,6 +94,9 @@ from tools.organizers import (
     categories_get,
     categories_update,
     categories_delete,
+    tags_list,
+    tags_create,
+    tags_get,
     tags_update,
     tags_delete,
     tools_update,
@@ -1254,6 +1257,42 @@ def mealie_categories_delete(category_id: str) -> str:
         JSON string confirming deletion
     """
     return categories_delete(category_id=category_id)
+
+
+@mcp.tool()
+def mealie_tags_list() -> str:
+    """List all tags.
+
+    Returns:
+        JSON string with list of tags
+    """
+    return tags_list()
+
+
+@mcp.tool()
+def mealie_tags_create(name: str) -> str:
+    """Create a new tag.
+
+    Args:
+        name: Name for the new tag
+
+    Returns:
+        JSON string with created tag details
+    """
+    return tags_create(name=name)
+
+
+@mcp.tool()
+def mealie_tags_get(tag_id: str) -> str:
+    """Get a tag by ID.
+
+    Args:
+        tag_id: The tag's ID
+
+    Returns:
+        JSON string with tag details
+    """
+    return tags_get(tag_id=tag_id)
 
 
 @mcp.tool()
