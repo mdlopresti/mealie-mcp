@@ -28,8 +28,8 @@ class TestRecipeAPIs:
     @respx.mock
     def test_update_recipe_last_made(self, mock_client):
         """Test update_recipe_last_made method."""
-        route = respx.put(
-            "https://test.mealie.example.com/api/recipes/test-recipe/timeline/last-made"
+        route = respx.patch(
+            "https://test.mealie.example.com/api/recipes/test-recipe/last-made"
         ).mock(return_value=Response(200, json={"lastMade": "2025-12-20"}))
 
         result = mock_client.update_recipe_last_made("test-recipe", "2025-12-20")
@@ -41,7 +41,7 @@ class TestRecipeAPIs:
     def test_create_recipes_from_urls_bulk(self, mock_client, sample_recipe):
         """Test bulk URL import."""
         route = respx.post(
-            "https://test.mealie.example.com/api/recipes/create-url-bulk"
+            "https://test.mealie.example.com/api/recipes/create/url/bulk"
         ).mock(return_value=Response(200, json={"imported": [sample_recipe]}))
 
         result = mock_client.create_recipes_from_urls_bulk(
@@ -54,7 +54,16 @@ class TestRecipeAPIs:
     @respx.mock
     def test_bulk_tag_recipes(self, mock_client, sample_tag):
         """Test bulk tag recipes."""
-        route = respx.put(
+        # Mock list_tags call (client looks up existing tags)
+        list_route = respx.get(
+            "https://test.mealie.example.com/api/organizers/tags"
+        ).mock(return_value=Response(200, json=[
+            {"id": "tag-1", "name": "Vegan", "slug": "vegan"},
+            {"id": "tag-2", "name": "Quick", "slug": "quick"}
+        ]))
+
+        # Mock bulk tag action
+        route = respx.post(
             "https://test.mealie.example.com/api/recipes/bulk-actions/tag"
         ).mock(return_value=Response(200, json={"success": True}))
 
@@ -63,12 +72,22 @@ class TestRecipeAPIs:
             ["Vegan", "Quick"]
         )
 
+        assert list_route.called
         assert route.called
 
     @respx.mock
     def test_bulk_categorize_recipes(self, mock_client):
         """Test bulk categorize recipes."""
-        route = respx.put(
+        # Mock list_categories call (client looks up existing categories)
+        list_route = respx.get(
+            "https://test.mealie.example.com/api/organizers/categories"
+        ).mock(return_value=Response(200, json=[
+            {"id": "cat-1", "name": "Dinner", "slug": "dinner"},
+            {"id": "cat-2", "name": "Main", "slug": "main"}
+        ]))
+
+        # Mock bulk categorize action
+        route = respx.post(
             "https://test.mealie.example.com/api/recipes/bulk-actions/categorize"
         ).mock(return_value=Response(200, json={"success": True}))
 
@@ -77,13 +96,14 @@ class TestRecipeAPIs:
             ["Dinner", "Main"]
         )
 
+        assert list_route.called
         assert route.called
 
     @respx.mock
     def test_bulk_delete_recipes(self, mock_client):
         """Test bulk delete recipes."""
-        route = respx.delete(
-            "https://test.mealie.example.com/api/recipes/bulk-actions"
+        route = respx.post(
+            "https://test.mealie.example.com/api/recipes/bulk-actions/delete"
         ).mock(return_value=Response(200, json={"deleted": 2}))
 
         result = mock_client.bulk_delete_recipes(["recipe-1", "recipe-2"])
@@ -95,16 +115,17 @@ class TestRecipeAPIs:
         """Test bulk export recipes."""
         route = respx.post(
             "https://test.mealie.example.com/api/recipes/bulk-actions/export"
-        ).mock(return_value=Response(200, content=b"recipe data"))
+        ).mock(return_value=Response(200, json={"recipes": [{"id": "recipe-1"}]}))
 
         result = mock_client.bulk_export_recipes(["recipe-1"], "json")
 
+        assert "recipes" in result
         assert route.called
 
     @respx.mock
     def test_bulk_update_settings(self, mock_client):
         """Test bulk update settings."""
-        route = respx.patch(
+        route = respx.post(
             "https://test.mealie.example.com/api/recipes/bulk-actions/settings"
         ).mock(return_value=Response(200, json={"updated": 2}))
 
@@ -184,7 +205,7 @@ class TestMealPlanAPIs:
     @respx.mock
     def test_update_mealplan_rule(self, mock_client):
         """Test update mealplan rule."""
-        route = respx.put(
+        route = respx.patch(
             "https://test.mealie.example.com/api/households/mealplans/rules/rule-1"
         ).mock(return_value=Response(200, json={"id": "rule-1", "name": "Updated Rule"}))
 
@@ -214,8 +235,8 @@ class TestShoppingAPIs:
     @respx.mock
     def test_delete_recipe_from_shopping_list(self, mock_client):
         """Test delete recipe from shopping list."""
-        route = respx.delete(
-            "https://test.mealie.example.com/api/shopping/items/item-1/recipe/recipe-1"
+        route = respx.post(
+            "https://test.mealie.example.com/api/households/shopping/lists/item-1/recipe/recipe-1/delete"
         ).mock(return_value=Response(200, json={"success": True}))
 
         result = mock_client.delete_recipe_from_shopping_list("item-1", "recipe-1")
@@ -253,7 +274,7 @@ class TestFoodUnitAPIs:
     @respx.mock
     def test_update_food(self, mock_client):
         """Test update food."""
-        route = respx.put(
+        route = respx.patch(
             "https://test.mealie.example.com/api/foods/food-1"
         ).mock(return_value=Response(200, json={"id": "food-1", "name": "Whole Wheat Flour"}))
 
@@ -276,8 +297,8 @@ class TestFoodUnitAPIs:
     @respx.mock
     def test_merge_foods(self, mock_client):
         """Test merge foods."""
-        route = respx.put(
-            "https://test.mealie.example.com/api/foods/food-1/merge/food-2"
+        route = respx.post(
+            "https://test.mealie.example.com/api/foods/merge"
         ).mock(return_value=Response(200, json={"success": True}))
 
         result = mock_client.merge_foods("food-1", "food-2")
@@ -311,7 +332,7 @@ class TestFoodUnitAPIs:
     @respx.mock
     def test_update_unit(self, mock_client):
         """Test update unit."""
-        route = respx.put(
+        route = respx.patch(
             "https://test.mealie.example.com/api/units/unit-1"
         ).mock(return_value=Response(200, json={"id": "unit-1", "name": "cups"}))
 
@@ -334,8 +355,8 @@ class TestFoodUnitAPIs:
     @respx.mock
     def test_merge_units(self, mock_client):
         """Test merge units."""
-        route = respx.put(
-            "https://test.mealie.example.com/api/units/unit-1/merge/unit-2"
+        route = respx.post(
+            "https://test.mealie.example.com/api/units/merge"
         ).mock(return_value=Response(200, json={"success": True}))
 
         result = mock_client.merge_units("unit-1", "unit-2")
@@ -409,7 +430,7 @@ class TestOrganizerAPIs:
     @respx.mock
     def test_update_category(self, mock_client):
         """Test update category."""
-        route = respx.put(
+        route = respx.patch(
             "https://test.mealie.example.com/api/organizers/categories/cat-1"
         ).mock(return_value=Response(200, json={"id": "cat-1", "name": "Desserts"}))
 
@@ -432,7 +453,7 @@ class TestOrganizerAPIs:
     @respx.mock
     def test_update_tag(self, mock_client):
         """Test update tag."""
-        route = respx.put(
+        route = respx.patch(
             "https://test.mealie.example.com/api/organizers/tags/tag-1"
         ).mock(return_value=Response(200, json={"id": "tag-1", "name": "Vegetarian"}))
 
@@ -455,7 +476,7 @@ class TestOrganizerAPIs:
     @respx.mock
     def test_update_tool(self, mock_client):
         """Test update tool."""
-        route = respx.put(
+        route = respx.patch(
             "https://test.mealie.example.com/api/organizers/tools/tool-1"
         ).mock(return_value=Response(200, json={"id": "tool-1", "name": "Food Processor"}))
 
