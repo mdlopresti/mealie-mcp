@@ -181,6 +181,138 @@ def recipes_list(page: int = 1, per_page: int = 20) -> str:
         return json.dumps(error_result, indent=2)
 
 
+def _resolve_tags(
+    client: MealieClient,
+    tag_names: list[str],
+    group_id: str,
+    existing_tags: Optional[list[dict]] = None
+) -> list[dict]:
+    """Resolve tag names to full tag objects with IDs.
+
+    This function handles both REPLACE mode (existing_tags=None) and ADDITIVE mode
+    (existing_tags provided). It looks up existing tags in the system, creates new
+    tags if needed, and returns a list of tag objects that can be safely assigned
+    to a recipe without causing SQL integrity errors.
+
+    Args:
+        client: MealieClient instance for API calls
+        tag_names: List of tag names to resolve (e.g., ["vegan", "quick"])
+        group_id: Group ID for creating new tags
+        existing_tags: Optional list of existing tag objects from the recipe.
+            - If None: REPLACE mode - return only the specified tags
+            - If provided: ADDITIVE mode - add new tags to existing ones
+
+    Returns:
+        List of tag objects with IDs that can be assigned to a recipe.
+        Each object contains at minimum: {"id": ..., "name": ..., "slug": ...}
+
+    Example:
+        # REPLACE mode (recipes_create)
+        tags = _resolve_tags(client, ["vegan", "quick"], group_id)
+
+        # ADDITIVE mode (recipes_update)
+        existing = recipe.get("tags", [])
+        tags = _resolve_tags(client, ["gluten-free"], group_id, existing)
+
+    Error Handling:
+        - Propagates MealieAPIError from client operations
+        - If tag creation fails, raises the exception to caller
+    """
+    # Get ALL tags from system to look up IDs
+    all_tags_resp = client.list_tags()
+    all_tags = all_tags_resp.get("items", all_tags_resp) if isinstance(all_tags_resp, dict) else all_tags_resp
+    tag_lookup = {tag["name"]: tag for tag in all_tags}
+
+    # ADDITIVE mode: start with existing tags
+    if existing_tags is not None:
+        final_tags = list(existing_tags)
+        existing_tag_names = {tag.get("name") for tag in existing_tags if isinstance(tag, dict)}
+    else:
+        # REPLACE mode: start fresh
+        final_tags = []
+        existing_tag_names = set()
+
+    # Process each tag name
+    for tag_name in tag_names:
+        if tag_name not in existing_tag_names:
+            # Look up in system tags
+            if tag_name in tag_lookup:
+                # Tag exists in system, use its full object (with ID)
+                final_tags.append(tag_lookup[tag_name])
+            else:
+                # Tag doesn't exist, create it first
+                new_tag = client.create_tag(tag_name)
+                final_tags.append(new_tag)
+
+    return final_tags
+
+
+def _resolve_categories(
+    client: MealieClient,
+    category_names: list[str],
+    group_id: str,
+    existing_categories: Optional[list[dict]] = None
+) -> list[dict]:
+    """Resolve category names to full category objects with IDs.
+
+    This function handles both REPLACE mode (existing_categories=None) and ADDITIVE mode
+    (existing_categories provided). It looks up existing categories in the system,
+    creates new categories if needed, and returns a list of category objects that can
+    be safely assigned to a recipe without causing SQL integrity errors.
+
+    Args:
+        client: MealieClient instance for API calls
+        category_names: List of category names to resolve (e.g., ["dinner", "soup"])
+        group_id: Group ID for creating new categories
+        existing_categories: Optional list of existing category objects from the recipe.
+            - If None: REPLACE mode - return only the specified categories
+            - If provided: ADDITIVE mode - add new categories to existing ones
+
+    Returns:
+        List of category objects with IDs that can be assigned to a recipe.
+        Each object contains at minimum: {"id": ..., "name": ..., "slug": ...}
+
+    Example:
+        # REPLACE mode (recipes_create)
+        categories = _resolve_categories(client, ["dinner", "soup"], group_id)
+
+        # ADDITIVE mode (recipes_update)
+        existing = recipe.get("recipeCategory", [])
+        categories = _resolve_categories(client, ["healthy"], group_id, existing)
+
+    Error Handling:
+        - Propagates MealieAPIError from client operations
+        - If category creation fails, raises the exception to caller
+    """
+    # Get ALL categories from system to look up IDs
+    all_cats_resp = client.list_categories()
+    all_cats = all_cats_resp.get("items", all_cats_resp) if isinstance(all_cats_resp, dict) else all_cats_resp
+    cat_lookup = {cat["name"]: cat for cat in all_cats}
+
+    # ADDITIVE mode: start with existing categories
+    if existing_categories is not None:
+        final_cats = list(existing_categories)
+        existing_cat_names = {cat.get("name") for cat in existing_categories if isinstance(cat, dict)}
+    else:
+        # REPLACE mode: start fresh
+        final_cats = []
+        existing_cat_names = set()
+
+    # Process each category name
+    for cat_name in category_names:
+        if cat_name not in existing_cat_names:
+            # Look up in system categories
+            if cat_name in cat_lookup:
+                # Category exists in system, use its full object (with ID)
+                final_cats.append(cat_lookup[cat_name])
+            else:
+                # Category doesn't exist, create it first
+                new_cat = client.create_category(cat_name)
+                final_cats.append(new_cat)
+
+    return final_cats
+
+
 def recipes_create(
     name: str,
     description: str = "",
@@ -269,20 +401,14 @@ def recipes_create(
                         {"text": inst} for inst in instructions
                     ]
 
-                # Handle tags - include groupId for proper tag creation
+                # Handle tags - use utility function to resolve IDs
                 group_id = recipe.get("groupId")
                 if tags:
-                    update_payload["tags"] = [
-                        {"name": tag, "slug": _slugify(tag), "groupId": group_id}
-                        for tag in tags
-                    ]
+                    update_payload["tags"] = _resolve_tags(client, tags, group_id)
 
-                # Handle categories - include groupId for proper category creation
+                # Handle categories - use utility function to resolve IDs
                 if categories:
-                    update_payload["recipeCategory"] = [
-                        {"name": cat, "slug": _slugify(cat), "groupId": group_id}
-                        for cat in categories
-                    ]
+                    update_payload["recipeCategory"] = _resolve_categories(client, categories, group_id)
 
                 # Update the recipe
                 client.put(f"/api/recipes/{slug}", json=update_payload)
@@ -451,28 +577,7 @@ def recipes_update(
             existing_tags = recipe.get("tags", [])
 
             if tags is not None:
-                # Get ALL tags from system to look up IDs
-                all_tags_resp = client.list_tags()
-                all_tags = all_tags_resp.get("items", all_tags_resp) if isinstance(all_tags_resp, dict) else all_tags_resp
-                tag_lookup = {tag["name"]: tag for tag in all_tags}
-
-                # Get existing tag names on this recipe
-                existing_tag_names = {tag.get("name") for tag in existing_tags if isinstance(tag, dict)}
-
-                # Build final tag list
-                final_tags = list(existing_tags)  # Start with existing
-                for tag_name in tags:
-                    if tag_name not in existing_tag_names:
-                        # Look up in system tags
-                        if tag_name in tag_lookup:
-                            # Tag exists in system, use its full object
-                            final_tags.append(tag_lookup[tag_name])
-                        else:
-                            # Tag doesn't exist, create it first
-                            new_tag = client.create_tag(tag_name)
-                            final_tags.append(new_tag)
-
-                update_payload["tags"] = final_tags
+                update_payload["tags"] = _resolve_tags(client, tags, group_id, existing_tags=existing_tags)
             else:
                 update_payload["tags"] = existing_tags
 
@@ -480,28 +585,9 @@ def recipes_update(
             existing_categories = recipe.get("recipeCategory", [])
 
             if categories is not None:
-                # Get ALL categories from system to look up IDs
-                all_cats_resp = client.list_categories()
-                all_cats = all_cats_resp.get("items", all_cats_resp) if isinstance(all_cats_resp, dict) else all_cats_resp
-                cat_lookup = {cat["name"]: cat for cat in all_cats}
-
-                # Get existing category names on this recipe
-                existing_cat_names = {cat.get("name") for cat in existing_categories if isinstance(cat, dict)}
-
-                # Build final category list
-                final_cats = list(existing_categories)  # Start with existing
-                for cat_name in categories:
-                    if cat_name not in existing_cat_names:
-                        # Look up in system categories
-                        if cat_name in cat_lookup:
-                            # Category exists in system, use its full object
-                            final_cats.append(cat_lookup[cat_name])
-                        else:
-                            # Category doesn't exist, create it first
-                            new_cat = client.create_category(cat_name)
-                            final_cats.append(new_cat)
-
-                update_payload["recipeCategory"] = final_cats
+                update_payload["recipeCategory"] = _resolve_categories(
+                    client, categories, group_id, existing_categories=existing_categories
+                )
             else:
                 update_payload["recipeCategory"] = existing_categories
 
