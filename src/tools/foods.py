@@ -256,6 +256,44 @@ def units_list(page: int = 1, per_page: int = 50) -> str:
         return json.dumps(error_result, indent=2)
 
 
+def units_create(
+    name: str,
+    description: Optional[str] = None,
+    abbreviation: Optional[str] = None
+) -> str:
+    """Create a new unit.
+
+    Args:
+        name: Name for the new unit
+        description: Optional description
+        abbreviation: Optional abbreviation (e.g., "tsp", "oz")
+
+    Returns:
+        JSON string with created unit details
+    """
+    try:
+        with MealieClient() as client:
+            result = client.create_unit(name, description, abbreviation)
+            return json.dumps({
+                "success": True,
+                "message": "Unit created successfully",
+                "unit": result
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 def units_get(unit_id: str) -> str:
     """Get a specific unit by ID.
 
