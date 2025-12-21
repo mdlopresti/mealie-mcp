@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2025-12-20
+
+### Fixed
+- Fixed `update_food` method to use PUT instead of PATCH (#16)
+- Fixed `update_food` to use `label_id` parameter instead of `label` (#16)
+- Fixed `update_food` to use correct API field `labelId` instead of `label` (#16)
+- Implemented GET-then-PUT pattern in `update_food` to preserve all food fields (#16)
+- Updated `foods_update` tool function to match new signature with `label_id` parameter (#16)
+
+### Impact
+- Enables programmatic label assignment to foods
+- Supports shopping list organization by label category
+- Enables bulk food categorization workflows
+- Enables automated food organization
+
 ## [1.7.0] - 2025-12-20
 
 ### Added
