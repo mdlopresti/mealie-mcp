@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Created `src/tools/cookbooks.py` with cookbook management functions (#24)
 - Added `list_cookbooks`, `create_cookbook`, `get_cookbook`, `update_cookbook`, and `delete_cookbook` methods to MealieClient (#24)
 - Added comprehensive test coverage for all cookbook operations (#24)
+- Added recipe comments management with full CRUD operations (#27)
+- Created `src/tools/comments.py` with 5 comment management functions (#27)
+- Added `get_recipe_comments`, `create_comment`, `get_comment`, `update_comment`, and `delete_comment` methods to MealieClient (#27)
+- Added 5 MCP tools for comment management: `mealie_comments_get_recipe`, `create`, `get`, `update`, `delete` (#27)
+- Added comprehensive test coverage for all comment operations (#27)
 
 ### Impact
 - Completes full CRUD functionality for all organizers (categories, tags, and kitchen tools)
@@ -43,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enables programmatic creation of measurement units for recipe import workflows (#26)
 - Enables cookbook management for organizing recipes into themed collections (#24)
 - Supports meal planning workflows with cookbook-based recipe organization (#24)
+- Enables recipe iteration tracking through comments (#27)
+- Supports collaborative recipe development with comment management (#27)
 - Enables kitchen tool management during recipe imports
 - Provides complete foundation for recipe organization automation
 
