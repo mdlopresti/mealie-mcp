@@ -78,6 +78,7 @@ from tools.parser import (
 )
 from tools.foods import (
     foods_list,
+    foods_create,
     foods_get,
     foods_update,
     foods_delete,
@@ -1052,6 +1053,25 @@ def mealie_foods_list(page: int = 1, per_page: int = 50) -> str:
         JSON string with paginated food list
     """
     return foods_list(page=page, per_page=per_page)
+
+
+@mcp.tool()
+def mealie_foods_create(
+    name: str,
+    description: str = None,
+    label_id: str = None
+) -> str:
+    """Create a new food.
+
+    Args:
+        name: Name for the new food
+        description: Optional description
+        label_id: Optional label ID (UUID) to assign
+
+    Returns:
+        JSON string with created food details
+    """
+    return foods_create(name=name, description=description, label_id=label_id)
 
 
 @mcp.tool()

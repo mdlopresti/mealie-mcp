@@ -522,12 +522,19 @@ class MealieClient:
         }
         return self.post("/api/parser/ingredients", json=payload)
 
-    def create_food(self, name: str) -> Dict[str, Any]:
+    def create_food(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        label_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Create a new food item.
 
         Args:
             name: The food name
+            description: Optional description
+            label_id: Optional label ID (UUID) to assign
 
         Returns:
             Created food data with id
@@ -536,6 +543,10 @@ class MealieClient:
             MealieAPIError: If creation fails
         """
         payload = {"name": name}
+        if description is not None:
+            payload["description"] = description
+        if label_id is not None:
+            payload["labelId"] = label_id
         return self.post("/api/foods", json=payload)
 
     def create_unit(self, name: str) -> Dict[str, Any]:

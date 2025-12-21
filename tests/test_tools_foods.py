@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from src.tools.foods import (
     foods_list,
+    foods_create,
     foods_get,
     foods_update,
     foods_delete,
@@ -48,6 +49,22 @@ class TestFoods:
 
         data = json.loads(result)
         assert isinstance(data, dict)
+
+    def test_foods_create(self):
+        """Test creating a food."""
+        mock_data = {"id": "123", "name": "Flour", "description": "All-purpose flour"}
+        mock_client = create_mock_client(post_value=mock_data)
+        mock_client.create_food = MagicMock(return_value=mock_data)
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_create(name="Flour", description="All-purpose flour")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+        assert data["success"] is True
+        assert "food" in data
+        assert data["message"] == "Food created successfully"
+        mock_client.create_food.assert_called_once_with("Flour", "All-purpose flour", None)
 
     def test_foods_get(self):
         """Test getting a food."""
