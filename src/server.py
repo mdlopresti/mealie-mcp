@@ -969,7 +969,7 @@ def mealie_foods_update(
     food_id: str,
     name: str | None = None,
     description: str | None = None,
-    label: str | None = None
+    label_id: str | None = None
 ) -> str:
     """Update an existing food.
 
@@ -977,12 +977,12 @@ def mealie_foods_update(
         food_id: The food's ID
         name: New name for the food
         description: New description
-        label: New label
+        label_id: Label ID (UUID) to assign to the food
 
     Returns:
         JSON string with updated food details
     """
-    return foods_update(food_id=food_id, name=name, description=description, label=label)
+    return foods_update(food_id=food_id, name=name, description=description, label_id=label_id)
 
 
 @mcp.tool()
