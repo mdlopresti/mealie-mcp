@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.7] - 2025-12-21
+
+### Fixed
+- **CRITICAL: Fix "Recipe already exists" error in mealie_recipes_create (#2)**
+  - Root cause: `recipes_create` was creating tag/category objects without IDs
+  - SQL integrity violations when tags/categories already existed in system
+  - Applied same ID lookup pattern from `recipes_update` (fixed in v1.6.6)
+  - Now uses shared utility functions to ensure consistent behavior
+
+### Changed
+- **Refactored tag/category resolution into shared utility functions**
+  - Added `_resolve_tags()` helper function used by both create and update
+  - Added `_resolve_categories()` helper function used by both create and update
+  - Eliminated 66 lines of duplicate code between the two functions
+  - Improved code maintainability and testability
+  - Both functions now use identical logic for looking up/creating tags and categories
+
+### Added
+- Comprehensive unit tests for utility functions (18 test cases)
+  - Test both REPLACE mode (recipes_create) and ADDITIVE mode (recipes_update)
+  - Test handling of existing, new, and mixed tags/categories
+  - Test duplicate detection, empty lists, paginated responses
+  - Test error propagation from API calls
+
 ## [1.6.6] - 2025-12-19
 
 ### Fixed
