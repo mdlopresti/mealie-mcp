@@ -4,6 +4,50 @@ This directory contains the Mealie MCP (Model Context Protocol) server implement
 
 ## Development
 
+### Git Workflow
+
+**IMPORTANT:** Use feature branches and pull requests for all changes:
+
+1. **Create a feature branch** for each issue:
+   ```bash
+   git checkout -b fix/issue-6-bulk-operations
+   ```
+
+2. **Make your changes** and commit:
+   ```bash
+   git add .
+   git commit -m "fix: description of fix"
+   ```
+
+3. **Push the branch** and create a PR:
+   ```bash
+   git push origin fix/issue-6-bulk-operations
+   gh pr create --title "Fix #6: Description" --body "Fixes #6"
+   ```
+
+4. **Wait for CI to pass** before merging:
+   ```bash
+   gh pr checks  # View CI status
+   gh run watch  # Watch CI run
+   ```
+
+5. **Merge the PR** after CI passes:
+   ```bash
+   gh pr merge --squash  # Or merge via GitHub UI
+   ```
+
+6. **Update local main** after merge:
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+**Benefits:**
+- CI validates changes before they reach main
+- Easy to review and revert if needed
+- Clean git history with squash merges
+- Automatic issue closing via PR references
+
 ### Primary API Reference
 
 When implementing new endpoints or debugging existing ones, **always consult the OpenAPI specification** as the primary source of truth:
