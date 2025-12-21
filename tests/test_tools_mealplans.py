@@ -23,7 +23,7 @@ from src.tools.mealplans import (
 )
 
 
-def create_mock_client(get_value=None, post_value=None, patch_value=None, delete_value=None):
+def create_mock_client(get_value=None, post_value=None, patch_value=None, put_value=None, delete_value=None):
     """Helper to create a mocked MealieClient."""
     mock = MagicMock()
     mock.__enter__ = MagicMock(return_value=mock)
@@ -34,6 +34,8 @@ def create_mock_client(get_value=None, post_value=None, patch_value=None, delete
         mock.post.return_value = post_value
     if patch_value is not None:
         mock.patch.return_value = patch_value
+    if put_value is not None:
+        mock.put.return_value = put_value
     if delete_value is not None:
         mock.delete.return_value = delete_value
     return mock
@@ -94,13 +96,33 @@ class TestMealPlans:
 
     def test_mealplans_update(self):
         """Test updating a meal plan."""
-        mock_client = create_mock_client(patch_value={"id": "1", "date": "2025-01-02"})
+        # Mock GET to return existing entry with required fields
+        existing_entry = {
+            "id": "1",
+            "date": "2025-01-01",
+            "entryType": "dinner",
+            "groupId": "group-uuid-123",
+            "userId": "user-uuid-456"
+        }
+        # Mock PUT to return updated entry
+        updated_entry = {
+            "id": "1",
+            "date": "2025-01-02",
+            "entryType": "dinner",
+            "groupId": "group-uuid-123",
+            "userId": "user-uuid-456"
+        }
+        mock_client = create_mock_client(
+            get_value=existing_entry,
+            put_value=updated_entry
+        )
 
         with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
             result = mealplans_update("mealplan-1", meal_date="2025-01-02")
 
         data = json.loads(result)
         assert isinstance(data, dict)
+        assert data.get("success") is True
 
     def test_mealplans_delete(self):
         """Test deleting a meal plan."""
@@ -499,7 +521,7 @@ class TestMealPlansFinalPush:
         mock_client = MagicMock()
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=None)
-        mock_client.patch.side_effect = TypeError("Type error")
+        mock_client.get.side_effect = TypeError("Type error")
 
         with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
             result = mealplans_update("meal-1", meal_date="2025-01-21")

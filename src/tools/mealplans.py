@@ -270,11 +270,13 @@ def mealplans_update(
                     "error": f"Meal plan entry '{mealplan_id}' not found"
                 }, indent=2)
 
-            # Build update payload
+            # Build update payload with required fields
             payload = {
                 "id": mealplan_id,
                 "date": meal_date or existing.get("date"),
                 "entryType": (entry_type.lower() if entry_type else existing.get("entryType")),
+                "groupId": existing.get("groupId"),  # Required by API
+                "userId": existing.get("userId"),    # Required by API
             }
 
             # Handle optional fields with clearing support
