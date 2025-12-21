@@ -99,22 +99,70 @@ jobs:
           pytest tests/test_smoke.py -v --tb=short \
             --cov=src \
             --cov-report=term \
-            --cov-report=xml \
+            --cov-report=json \
             --cov-report=html
 
-      - name: Display coverage summary
+      - name: Extract and display coverage percentage
+        id: coverage
         run: |
+          # Extract coverage percentage from coverage.json
+          COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered'])")
+          echo "coverage=$COVERAGE" >> $GITHUB_OUTPUT
           echo "=== Coverage Summary ==="
-          python -m coverage report --precision=2
+          echo "Total Coverage: ${COVERAGE}%"
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@0561704f0f02c16a585d4c7555e57fa2e44cf909 # v5.5.2
+          # Save coverage to file for artifact
+          echo "$COVERAGE" > coverage-percentage.txt
+
+      - name: Download baseline coverage (PR only)
+        if: github.event_name == 'pull_request'
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4.1.8
+        continue-on-error: true
         with:
-          file: ./coverage.xml
-          flags: smoke-tests
-          name: smoke-test-coverage
-          fail_ci_if_error: true
-          verbose: true
+          name: coverage-baseline
+          path: baseline/
+
+      - name: Compare coverage to baseline (PR only)
+        if: github.event_name == 'pull_request'
+        run: |
+          NEW_COVERAGE="${{ steps.coverage.outputs.coverage }}"
+
+          if [ -f baseline/coverage-percentage.txt ]; then
+            BASELINE_COVERAGE=$(cat baseline/coverage-percentage.txt)
+            echo "=== Coverage Comparison ==="
+            echo "Baseline Coverage: ${BASELINE_COVERAGE}%"
+            echo "Current Coverage:  ${NEW_COVERAGE}%"
+
+            # Calculate difference using bc for floating point
+            DIFF=$(echo "$NEW_COVERAGE - $BASELINE_COVERAGE" | bc)
+            echo "Difference:        ${DIFF}%"
+
+            # Check if coverage decreased by more than 0.5%
+            THRESHOLD="-0.5"
+            if (( $(echo "$DIFF < $THRESHOLD" | bc -l) )); then
+              echo "❌ Coverage decreased by more than 0.5%!"
+              echo "This PR reduces test coverage significantly."
+              exit 1
+            else
+              echo "✅ Coverage check passed"
+              if (( $(echo "$DIFF >= 0" | bc -l) )); then
+                echo "Coverage improved by ${DIFF}%"
+              else
+                echo "Coverage decreased by ${DIFF#-}% (within acceptable threshold)"
+              fi
+            fi
+          else
+            echo "⚠️  No baseline coverage found - this may be the first run"
+            echo "Current coverage will be used as baseline going forward"
+          fi
+
+      - name: Upload coverage baseline (main branch only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: coverage-baseline
+          path: coverage-percentage.txt
+          retention-days: 90
 
       - name: Upload coverage report as artifact
         if: always()
@@ -122,7 +170,7 @@ jobs:
         with:
           name: coverage-report
           path: |
-            coverage.xml
+            coverage.json
             htmlcov/
           retention-days: 7
 

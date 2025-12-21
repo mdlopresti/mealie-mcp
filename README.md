@@ -2,7 +2,6 @@
 
 [![Build and Push Docker Image](https://github.com/mdlopresti/mealie-mcp/actions/workflows/docker.yml/badge.svg)](https://github.com/mdlopresti/mealie-mcp/actions/workflows/docker.yml)
 [![Test](https://github.com/mdlopresti/mealie-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/mdlopresti/mealie-mcp/actions/workflows/test.yml)
-[![codecov](https://codecov.io/gh/mdlopresti/mealie-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/mdlopresti/mealie-mcp)
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants to interact with [Mealie](https://mealie.io/) for recipe management, meal planning, and shopping lists.
 
