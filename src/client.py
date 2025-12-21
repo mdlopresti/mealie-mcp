@@ -1160,6 +1160,162 @@ class MealieClient:
         return self.post("/api/recipes/create/image", json=payload)
 
     # -------------------------------------------------------------------------
+    # Recipe Timeline Events
+    # -------------------------------------------------------------------------
+
+    def list_timeline_events(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        order_by: Optional[str] = None,
+        order_direction: Optional[str] = None,
+        query_filter: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        List all recipe timeline events with pagination.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of events per page
+            order_by: Field to order by
+            order_direction: "asc" or "desc"
+            query_filter: Filter query string
+
+        Returns:
+            Paginated timeline events data
+        """
+        params = {"page": page, "perPage": per_page}
+        if order_by:
+            params["orderBy"] = order_by
+        if order_direction:
+            params["orderDirection"] = order_direction
+        if query_filter:
+            params["queryFilter"] = query_filter
+
+        return self.get("/api/recipes/timeline/events", params=params)
+
+    def get_timeline_event(self, event_id: str) -> Dict[str, Any]:
+        """
+        Get a specific timeline event by ID.
+
+        Args:
+            event_id: Timeline event ID (UUID)
+
+        Returns:
+            Timeline event data
+        """
+        return self.get(f"/api/recipes/timeline/events/{event_id}")
+
+    def create_timeline_event(
+        self,
+        recipe_id: str,
+        subject: str,
+        event_type: str = "info",
+        event_message: Optional[str] = None,
+        user_id: Optional[str] = None,
+        timestamp: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a new timeline event for a recipe.
+
+        Args:
+            recipe_id: Recipe ID (UUID)
+            subject: Event subject/title
+            event_type: Event type ("system", "info", or "comment")
+            event_message: Optional event message/description
+            user_id: Optional user ID (UUID)
+            timestamp: Optional ISO 8601 timestamp
+
+        Returns:
+            Created timeline event data
+        """
+        payload = {
+            "recipeId": recipe_id,
+            "subject": subject,
+            "eventType": event_type,
+        }
+        if event_message is not None:
+            payload["eventMessage"] = event_message
+        if user_id is not None:
+            payload["userId"] = user_id
+        if timestamp is not None:
+            payload["timestamp"] = timestamp
+
+        return self.post("/api/recipes/timeline/events", json=payload)
+
+    def update_timeline_event(
+        self,
+        event_id: str,
+        subject: Optional[str] = None,
+        event_type: Optional[str] = None,
+        event_message: Optional[str] = None,
+        timestamp: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update an existing timeline event.
+
+        Args:
+            event_id: Timeline event ID (UUID)
+            subject: New subject/title
+            event_type: New event type ("system", "info", or "comment")
+            event_message: New event message/description
+            timestamp: New ISO 8601 timestamp
+
+        Returns:
+            Updated timeline event data
+        """
+        payload = {}
+        if subject is not None:
+            payload["subject"] = subject
+        if event_type is not None:
+            payload["eventType"] = event_type
+        if event_message is not None:
+            payload["eventMessage"] = event_message
+        if timestamp is not None:
+            payload["timestamp"] = timestamp
+
+        return self.put(f"/api/recipes/timeline/events/{event_id}", json=payload)
+
+    def delete_timeline_event(self, event_id: str) -> None:
+        """
+        Delete a timeline event.
+
+        Args:
+            event_id: Timeline event ID (UUID)
+        """
+        return self.delete(f"/api/recipes/timeline/events/{event_id}")
+
+    def update_timeline_event_image(
+        self,
+        event_id: str,
+        image_data: bytes,
+        extension: str,
+    ) -> Dict[str, Any]:
+        """
+        Upload or update an image for a timeline event.
+
+        Args:
+            event_id: Timeline event ID (UUID)
+            image_data: Raw image bytes
+            extension: Image file extension (e.g., "jpg", "png")
+
+        Returns:
+            Updated timeline event data
+        """
+        files = {
+            "image": (f"image.{extension}", image_data, f"image/{extension}")
+        }
+        data = {"extension": extension}
+
+        response = self.client.put(
+            self._build_url(f"/api/recipes/timeline/events/{event_id}/image"),
+            files=files,
+            data=data,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    # -------------------------------------------------------------------------
     # Organizers Management (Categories, Tags, Tools)
     # -------------------------------------------------------------------------
 
