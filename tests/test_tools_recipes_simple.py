@@ -474,3 +474,215 @@ class TestRecipesCreateFromImage:
 
         data = json.loads(result)
         assert isinstance(data, dict)
+
+
+class TestRecipesErrorHandling:
+    """Test error handling in recipe operations."""
+
+    def test_search_api_error_already_covered(self):
+        """Already covered in test_search_api_error - skip."""
+        pass
+
+    def test_create_api_error(self):
+        """Test error handling in recipes_create."""
+        from src.tools.recipes import recipes_create
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.create_recipe.side_effect = MealieAPIError(
+            "Creation failed", status_code=400, response_body="Invalid data"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_create("Test Recipe")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_update_api_error(self):
+        """Test error handling in recipes_update."""
+        from src.tools.recipes import recipes_update
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get_recipe.return_value = {"id": "1", "groupId": "g1"}
+        mock_client.update_recipe.side_effect = MealieAPIError(
+            "Update failed", status_code=500, response_body="Server error"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_update("test-recipe", name="New Name")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_delete_api_error(self):
+        """Test error handling in recipes_delete."""
+        from src.tools.recipes import recipes_delete
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        # Mock get to return a recipe name
+        mock_client.get.return_value = {"name": "Test Recipe"}
+        # Mock delete to raise an error
+        mock_client.delete.side_effect = MealieAPIError(
+            "Delete failed", status_code=404, response_body="Not found"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_delete("nonexistent")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_duplicate_api_error(self):
+        """Test error handling in recipes_duplicate."""
+        from src.tools.recipes import recipes_duplicate
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.duplicate_recipe.side_effect = MealieAPIError(
+            "Duplicate failed", status_code=400, response_body="Error"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_duplicate("test-recipe")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_bulk_tag_api_error(self):
+        """Test error handling in recipes_bulk_tag."""
+        from src.tools.recipes import recipes_bulk_tag
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.bulk_tag_recipes.side_effect = MealieAPIError(
+            "Bulk tag failed", status_code=500, response_body="Error"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_bulk_tag(["recipe-1"], ["Tag"])
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_create_from_url_api_error(self):
+        """Test error handling in recipes_create_from_url."""
+        from src.tools.recipes import recipes_create_from_url
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.create_recipe_from_url.side_effect = MealieAPIError(
+            "URL import failed", status_code=400, response_body="Invalid URL"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_create_from_url("https://invalid.com")
+
+        data = json.loads(result)
+        assert "error" in data
+
+
+class TestRecipesUpdateStructured:
+    """Test recipes_update_structured_ingredients function."""
+
+    def test_update_structured_basic(self):
+        """Test updating recipe with structured ingredients."""
+        from src.tools.recipes import recipes_update_structured_ingredients
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+
+        # Mock get_recipe to return existing recipe
+        mock_client.get_recipe.return_value = {
+            "id": "recipe-1",
+            "slug": "test-recipe",
+            "groupId": "group-123"
+        }
+        # Mock update_recipe
+        mock_client.update_recipe.return_value = {
+            "id": "recipe-1",
+            "slug": "test-recipe"
+        }
+
+        parsed_ingredients = [
+            {
+                "ingredient": {
+                    "quantity": 2.0,
+                    "unit": {"name": "cup"},
+                    "food": {"name": "flour"},
+                    "note": "sifted"
+                }
+            }
+        ]
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_update_structured_ingredients(
+                "test-recipe",
+                parsed_ingredients
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+
+class TestRecipesBulkFromUrls:
+    """Test recipes_create_from_urls_bulk function."""
+
+    def test_bulk_import_urls(self):
+        """Test bulk importing recipes from URLs."""
+        from src.tools.recipes import recipes_create_from_urls_bulk
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.create_recipes_from_urls_bulk.return_value = {
+            "imported": 2,
+            "recipes": [
+                {"slug": "recipe-1", "name": "Recipe 1"},
+                {"slug": "recipe-2", "name": "Recipe 2"}
+            ]
+        }
+
+        urls = ["https://example.com/recipe1", "https://example.com/recipe2"]
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_create_from_urls_bulk(urls)
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_bulk_import_with_tags(self):
+        """Test bulk import with tag inclusion."""
+        from src.tools.recipes import recipes_create_from_urls_bulk
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.create_recipes_from_urls_bulk.return_value = {
+            "imported": 1,
+            "recipes": [{"slug": "recipe-1"}]
+        }
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_create_from_urls_bulk(
+                ["https://example.com/recipe"],
+                include_tags=True
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
