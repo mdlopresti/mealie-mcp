@@ -114,6 +114,13 @@ from tools.cookbooks import (
     cookbooks_update,
     cookbooks_delete,
 )
+from tools.comments import (
+    comments_get_recipe,
+    comments_create,
+    comments_get,
+    comments_update,
+    comments_delete,
+)
 
 # Import resources
 from resources.recipes import get_recipes_list, get_recipe_detail
@@ -1533,6 +1540,77 @@ def mealie_cookbooks_delete(cookbook_id: str) -> str:
         JSON string confirming deletion
     """
     return cookbooks_delete(cookbook_id=cookbook_id)
+
+
+# -----------------------------------------------------------------------------
+# Recipe Comments Management Tools
+# -----------------------------------------------------------------------------
+
+@mcp.tool()
+def mealie_comments_get_recipe(recipe_slug: str) -> str:
+    """Get all comments for a recipe.
+
+    Args:
+        recipe_slug: Recipe slug identifier
+
+    Returns:
+        JSON string with list of comments
+    """
+    return comments_get_recipe(recipe_slug=recipe_slug)
+
+
+@mcp.tool()
+def mealie_comments_create(recipe_id: str, text: str) -> str:
+    """Create a comment on a recipe.
+
+    Args:
+        recipe_id: Recipe ID
+        text: Comment text
+
+    Returns:
+        JSON string with created comment
+    """
+    return comments_create(recipe_id=recipe_id, text=text)
+
+
+@mcp.tool()
+def mealie_comments_get(comment_id: str) -> str:
+    """Get a comment by ID.
+
+    Args:
+        comment_id: Comment ID
+
+    Returns:
+        JSON string with comment details
+    """
+    return comments_get(comment_id=comment_id)
+
+
+@mcp.tool()
+def mealie_comments_update(comment_id: str, text: str) -> str:
+    """Update a comment.
+
+    Args:
+        comment_id: Comment ID
+        text: New comment text
+
+    Returns:
+        JSON string with updated comment
+    """
+    return comments_update(comment_id=comment_id, text=text)
+
+
+@mcp.tool()
+def mealie_comments_delete(comment_id: str) -> str:
+    """Delete a comment.
+
+    Args:
+        comment_id: Comment ID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return comments_delete(comment_id=comment_id)
 
 
 # -----------------------------------------------------------------------------

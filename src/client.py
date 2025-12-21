@@ -1032,6 +1032,32 @@ class MealieClient:
         self.delete(f"/api/households/cookbooks/{cookbook_id}")
 
     # -------------------------------------------------------------------------
+    # Recipe Comments Management
+    # -------------------------------------------------------------------------
+
+    def get_recipe_comments(self, slug: str) -> Dict[str, Any]:
+        """Get all comments for a recipe."""
+        return self.get(f"/api/recipes/{slug}/comments")
+
+    def create_comment(self, recipe_id: str, text: str) -> Dict[str, Any]:
+        """Create a new comment on a recipe."""
+        payload = {"recipeId": recipe_id, "text": text}
+        return self.post("/api/comments", json=payload)
+
+    def get_comment(self, comment_id: str) -> Dict[str, Any]:
+        """Get a specific comment by ID."""
+        return self.get(f"/api/comments/{comment_id}")
+
+    def update_comment(self, comment_id: str, text: str) -> Dict[str, Any]:
+        """Update a comment."""
+        payload = {"text": text}
+        return self.put(f"/api/comments/{comment_id}", json=payload)
+
+    def delete_comment(self, comment_id: str) -> None:
+        """Delete a comment."""
+        self.delete(f"/api/comments/{comment_id}")
+
+    # -------------------------------------------------------------------------
     # Recipe Image Upload
     # -------------------------------------------------------------------------
 
