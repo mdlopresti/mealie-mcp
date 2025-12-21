@@ -22,6 +22,97 @@ except ImportError:
 # Categories Management
 # -----------------------------------------------------------------------------
 
+def categories_list() -> str:
+    """List all categories.
+
+    Returns:
+        JSON string with list of categories
+    """
+    try:
+        with MealieClient() as client:
+            categories = client.list_categories()
+            return json.dumps({
+                "success": True,
+                "categories": categories
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def categories_create(name: str) -> str:
+    """Create a new category.
+
+    Args:
+        name: Name for the new category
+
+    Returns:
+        JSON string with created category details
+    """
+    try:
+        with MealieClient() as client:
+            category = client.create_category(name)
+            return json.dumps({
+                "success": True,
+                "message": "Category created successfully",
+                "category": category
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def categories_get(category_id: str) -> str:
+    """Get a category by ID.
+
+    Args:
+        category_id: The category's ID
+
+    Returns:
+        JSON string with category details
+    """
+    try:
+        with MealieClient() as client:
+            category = client.get_category(category_id)
+            return json.dumps({
+                "success": True,
+                "category": category
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 def categories_update(
     category_id: str,
     name: Optional[str] = None,

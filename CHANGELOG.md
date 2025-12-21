@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Added `mealie_categories_list` MCP tool to list all categories (#21)
+- Added `mealie_categories_create` MCP tool to create new categories (#21)
+- Added `mealie_categories_get` MCP tool to get category by ID (#21)
+- Added `get_category` method to MealieClient for retrieving category details (#21)
+- Added comprehensive test coverage for all category operations (#21)
+
+### Impact
+- Completes full CRUD functionality for categories
+- Enables automated recipe organization workflows
+- Allows programmatic category management for bulk operations
+- Provides foundation for implementing similar LIST/CREATE/GET operations for tags and tools
+
 ## [1.7.2] - 2025-12-21
 
 ### Fixed
