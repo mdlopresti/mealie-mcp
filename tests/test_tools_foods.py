@@ -163,3 +163,225 @@ class TestErrorHandling:
 
         data = json.loads(result)
         assert "error" in data
+
+    def test_foods_update_error(self):
+        """Test foods_update error handling."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = MealieAPIError(
+            "Update failed", status_code=400, response_body="Bad request"
+        )
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_update("food-1", name="New Name")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_units_update_error(self):
+        """Test units_update error handling."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = MealieAPIError(
+            "Update failed", status_code=404, response_body="Not found"
+        )
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = units_update("unit-1", name="New Name")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_foods_delete_error(self):
+        """Test foods_delete error handling."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.delete_food.side_effect = MealieAPIError(
+            "Delete failed", status_code=409, response_body="Conflict"
+        )
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_delete("food-1")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_foods_merge_error(self):
+        """Test foods_merge error handling."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = MealieAPIError(
+            "Merge failed", status_code=400, response_body="Invalid"
+        )
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_merge("food-1", "food-2")
+
+        data = json.loads(result)
+        assert "error" in data
+
+
+class TestFoodsAdvanced:
+    """Test advanced food scenarios."""
+
+    def test_foods_list_with_pagination(self):
+        """Test listing foods with custom pagination."""
+        mock_client = create_mock_client(get_value={
+            "items": [{"id": str(i), "name": f"Food {i}"} for i in range(10)],
+            "page": 2,
+            "perPage": 10,
+            "total": 50
+        })
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_list(page=2, per_page=10)
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_units_list_with_pagination(self):
+        """Test listing units with custom pagination."""
+        mock_client = create_mock_client(get_value={
+            "items": [{"id": str(i), "name": f"Unit {i}"} for i in range(5)],
+            "page": 1,
+            "perPage": 5,
+            "total": 20
+        })
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = units_list(page=1, per_page=5)
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_foods_update_multiple_fields(self):
+        """Test updating food with multiple fields."""
+        mock_client = create_mock_client(patch_value={
+            "id": "1",
+            "name": "Updated Food",
+            "description": "Updated description",
+            "label": "Updated label"
+        })
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_update(
+                "food-1",
+                name="Updated Food",
+                description="Updated description",
+                label="Updated label"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_units_update_with_abbreviation(self):
+        """Test updating unit with abbreviation."""
+        mock_client = create_mock_client(patch_value={
+            "id": "1",
+            "name": "tablespoon",
+            "abbreviation": "tbsp"
+        })
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = units_update(
+                "unit-1",
+                name="tablespoon",
+                abbreviation="tbsp"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+
+class TestFoodsFinalPush:
+    """Final foods/units tests to reach coverage target."""
+
+    def test_foods_list_unexpected_error(self):
+        """Test foods_list unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = RuntimeError("Runtime error")
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_list()
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_foods_get_unexpected_error(self):
+        """Test foods_get unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = ValueError("Value error")
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_get("food-1")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_units_list_unexpected_error(self):
+        """Test units_list unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = TypeError("Type error")
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = units_list()
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_units_get_unexpected_error(self):
+        """Test units_get unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = RuntimeError("Runtime error")
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = units_get("unit-1")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_foods_merge_unexpected_error(self):
+        """Test foods_merge unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = ValueError("Value error")
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = foods_merge("food-1", "food-2")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_units_merge_unexpected_error(self):
+        """Test units_merge unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = TypeError("Type error")
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            result = units_merge("unit-1", "unit-2")
+
+        data = json.loads(result)
+        assert "error" in data

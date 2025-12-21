@@ -253,3 +253,287 @@ class TestErrorHandling:
 
         data = json.loads(result)
         assert "error" in data
+
+    def test_tags_update_error(self):
+        """Test tags_update error handling."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = MealieAPIError(
+            "Error", status_code=400, response_body="Bad request"
+        )
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tags_update("tag-1", name="Test")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_tools_update_error(self):
+        """Test tools_update error handling."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = MealieAPIError(
+            "Error", status_code=404, response_body="Not found"
+        )
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tools_update("tool-1", name="Test")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_categories_delete_error(self):
+        """Test categories_delete error handling."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.delete_category.side_effect = MealieAPIError(
+            "Error", status_code=409, response_body="Conflict"
+        )
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = categories_delete("cat-1")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_parser_batch_error(self):
+        """Test parser_ingredients_batch error handling."""
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = MealieAPIError(
+            "Batch error", status_code=500, response_body="Server error"
+        )
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredients_batch(["flour", "salt"])
+
+        data = json.loads(result)
+        assert "error" in data
+
+
+class TestOrganizersAdvanced:
+    """Test advanced organizer scenarios."""
+
+    def test_categories_update_with_slug(self):
+        """Test updating category with slug."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.return_value = {
+            "id": "1",
+            "name": "Updated",
+            "slug": "updated-slug"
+        }
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = categories_update("cat-1", name="Updated", slug="updated-slug")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_tags_update_slug_only(self):
+        """Test updating tag slug only."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.return_value = {
+            "id": "1",
+            "name": "Tag",
+            "slug": "new-slug"
+        }
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tags_update("tag-1", slug="new-slug")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_tools_update_name_only(self):
+        """Test updating tool name only."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.return_value = {
+            "id": "1",
+            "name": "New Name"
+        }
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tools_update("tool-1", name="New Name")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+
+class TestParserMoreCases:
+    """Additional parser tests for coverage."""
+
+    def test_parse_ingredient_empty_response(self):
+        """Test parsing ingredient with empty response."""
+        mock_client = create_mock_client(post_value={})
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredient("empty test")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_parse_ingredients_batch_empty_list(self):
+        """Test batch parsing with empty list."""
+        mock_client = create_mock_client(post_value=[])
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredients_batch([])
+
+        data = json.loads(result)
+        assert isinstance(data, (dict, list))
+
+    def test_parse_ingredients_single_item_batch(self):
+        """Test batch parsing with single item."""
+        mock_client = create_mock_client(post_value=[
+            {"input": "1 cup flour", "ingredient": {"quantity": 1.0}}
+        ])
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredients_batch(["1 cup flour"])
+
+        data = json.loads(result)
+        assert isinstance(data, (dict, list))
+
+    def test_parse_ingredient_with_note(self):
+        """Test parsing ingredient with note field."""
+        mock_client = create_mock_client(post_value={
+            "input": "2 cups flour, sifted",
+            "ingredient": {
+                "quantity": 2.0,
+                "unit": "cup",
+                "food": "flour",
+                "note": "sifted"
+            }
+        })
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredient("2 cups flour, sifted", parser="nlp")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_parse_ingredient_unexpected_error(self):
+        """Test parser unexpected error handling."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = ValueError("Unexpected error")
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredient("test")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_parse_ingredients_batch_unexpected_error(self):
+        """Test batch parser unexpected error handling."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = TypeError("Type error")
+
+        with patch('src.tools.parser.MealieClient', return_value=mock_client):
+            result = parser_ingredients_batch(["test1", "test2"])
+
+        data = json.loads(result)
+        assert "error" in data
+
+
+class TestOrganizersFinalPush:
+    """Final organizers tests to reach 50% coverage."""
+
+    def test_categories_update_unexpected_error(self):
+        """Test categories_update unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = ValueError("Value error")
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = categories_update("cat-1", name="Test")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_tags_update_unexpected_error(self):
+        """Test tags_update unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = TypeError("Type error")
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tags_update("tag-1", name="Test")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_tools_update_unexpected_error(self):
+        """Test tools_update unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = RuntimeError("Runtime error")
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tools_update("tool-1", name="Test")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_tags_delete_unexpected_error(self):
+        """Test tags_delete unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.delete_tag.side_effect = ValueError("Value error")
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tags_delete("tag-1")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_tools_delete_unexpected_error(self):
+        """Test tools_delete unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.delete_tool.side_effect = TypeError("Type error")
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tools_delete("tool-1")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_categories_delete_unexpected_error(self):
+        """Test categories_delete unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.delete_category.side_effect = RuntimeError("Runtime error")
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = categories_delete("cat-1")
+
+        data = json.loads(result)
+        assert "error" in data

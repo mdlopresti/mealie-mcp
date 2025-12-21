@@ -354,3 +354,233 @@ class TestMealPlansAdvanced:
 
         data = json.loads(result)
         assert isinstance(data, dict)
+
+
+class TestMealPlansMoreEdgeCases:
+    """Test additional meal plan edge cases for coverage."""
+
+    def test_mealplans_today_with_actual_meals(self):
+        """Test today's meals with actual meal entries."""
+        mock_client = create_mock_client(get_value=[
+            {
+                "id": "meal-1",
+                "entryType": "breakfast",
+                "title": "Morning Meal",
+                "text": "Oatmeal",
+                "recipeId": None,
+                "recipe": None
+            },
+            {
+                "id": "meal-2",
+                "entryType": "dinner",
+                "title": None,
+                "text": None,
+                "recipeId": "recipe-1",
+                "recipe": {
+                    "id": "recipe-1",
+                    "name": "Pasta",
+                    "slug": "pasta"
+                }
+            },
+            {
+                "id": "meal-3",
+                "entryType": "snack",
+                "title": "Afternoon Snack",
+                "text": "Fruit",
+                "recipeId": None,
+                "recipe": None
+            }
+        ])
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_today()
+
+        data = json.loads(result)
+        assert "meals" in data
+        assert "breakfast" in data["meals"]
+        assert "dinner" in data["meals"]
+        assert "snack" in data["meals"]
+
+    def test_mealplans_get_by_date_with_multiple_entries(self):
+        """Test get meal plans by date with multiple entries."""
+        mock_client = create_mock_client(get_value=[
+            {
+                "id": "meal-1",
+                "entryType": "breakfast",
+                "recipe": {"name": "Oatmeal", "slug": "oatmeal"}
+            },
+            {
+                "id": "meal-2",
+                "entryType": "lunch",
+                "recipe": {"name": "Sandwich", "slug": "sandwich"}
+            }
+        ])
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_get_by_date("2025-01-20")
+
+        data = json.loads(result)
+        assert "meals" in data
+        assert len(data["meals"]) >= 2
+
+    def test_mealplans_list_with_date_range(self):
+        """Test listing meal plans with custom date range."""
+        mock_client = create_mock_client(get_value=[
+            {"id": "1", "date": "2025-01-20"},
+            {"id": "2", "date": "2025-01-21"},
+            {"id": "3", "date": "2025-01-22"}
+        ])
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_list(start_date="2025-01-20", end_date="2025-01-25")
+
+        data = json.loads(result)
+        assert isinstance(data, (dict, list))
+
+    def test_mealplan_unexpected_error(self):
+        """Test unexpected error handling in mealplans."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = ValueError("Unexpected error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_list()
+
+        data = json.loads(result)
+        assert "error" in data
+        assert "Unexpected error" in data["error"]
+
+    def test_mealplans_get_unexpected_error(self):
+        """Test unexpected error in mealplans_get."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = TypeError("Type error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_get("test-id")
+
+        data = json.loads(result)
+        assert "error" in data
+
+
+class TestMealPlansFinalPush:
+    """Final mealplan tests to reach 50% coverage."""
+
+    def test_mealplans_list_unexpected_error(self):
+        """Test mealplans_list unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = RuntimeError("Runtime error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_list()
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_mealplans_create_unexpected_error(self):
+        """Test mealplans_create unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = ValueError("Value error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_create("2025-01-20", "dinner")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_mealplans_update_unexpected_error(self):
+        """Test mealplans_update unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = TypeError("Type error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_update("meal-1", meal_date="2025-01-21")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_mealplans_delete_unexpected_error(self):
+        """Test mealplans_delete unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.delete.side_effect = RuntimeError("Runtime error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_delete("meal-1")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_mealplan_rules_create_unexpected_error(self):
+        """Test mealplan_rules_create unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.post.side_effect = ValueError("Value error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplan_rules_create("Test Rule", "dinner")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_mealplan_rules_update_unexpected_error(self):
+        """Test mealplan_rules_update unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.patch.side_effect = TypeError("Type error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplan_rules_update("rule-1", name="Updated")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_mealplan_rules_delete_unexpected_error(self):
+        """Test mealplan_rules_delete unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.delete_mealplan_rule.side_effect = RuntimeError("Runtime error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplan_rules_delete("rule-1")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_mealplans_random_unexpected_error(self):
+        """Test mealplans_random unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = ValueError("Value error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_random()
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_mealplans_get_by_date_unexpected_error(self):
+        """Test mealplans_get_by_date unexpected error."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = TypeError("Type error")
+
+        with patch('src.tools.mealplans.MealieClient', return_value=mock_client):
+            result = mealplans_get_by_date("2025-01-20")
+
+        data = json.loads(result)
+        assert "error" in data

@@ -577,5 +577,137 @@ class TestIngredientAPIs:
         assert route.called
 
 
+class TestConnectionAndHealth:
+    """Test connection and health check methods."""
+
+    @respx.mock
+    def test_test_connection_success(self, mock_client):
+        """Test successful connection test."""
+        route = respx.get(
+            "https://test.mealie.example.com/api/app/about"
+        ).mock(return_value=Response(200, json={"version": "1.0.0"}))
+
+        result = mock_client.test_connection()
+
+        assert result is True
+        assert route.called
+
+    @respx.mock
+    def test_test_connection_with_api_version(self, mock_client):
+        """Test connection test with apiVersion field."""
+        route = respx.get(
+            "https://test.mealie.example.com/api/app/about"
+        ).mock(return_value=Response(200, json={"apiVersion": "v1"}))
+
+        result = mock_client.test_connection()
+
+        assert result is True
+        assert route.called
+
+    @respx.mock
+    def test_test_connection_with_version_api(self, mock_client):
+        """Test connection test with versionAPI field."""
+        route = respx.get(
+            "https://test.mealie.example.com/api/app/about"
+        ).mock(return_value=Response(200, json={"versionAPI": "1.0"}))
+
+        result = mock_client.test_connection()
+
+        assert result is True
+        assert route.called
+
+    @respx.mock
+    def test_test_connection_empty_dict(self, mock_client):
+        """Test connection test with empty dict response."""
+        route = respx.get(
+            "https://test.mealie.example.com/api/app/about"
+        ).mock(return_value=Response(200, json={}))
+
+        result = mock_client.test_connection()
+
+        assert result is True
+        assert route.called
+
+    @respx.mock
+    def test_test_connection_failure(self, mock_client):
+        """Test connection test failure."""
+        route = respx.get(
+            "https://test.mealie.example.com/api/app/about"
+        ).mock(return_value=Response(500, text="Server error"))
+
+        with pytest.raises(MealieAPIError) as exc_info:
+            mock_client.test_connection()
+
+        # Should raise MealieAPIError with HTTP 500
+        assert exc_info.value.status_code == 500
+        assert route.called
+
+
+class TestBulkOperationsWithCreation:
+    """Test bulk operations that create tags/categories."""
+
+    @respx.mock
+    def test_bulk_tag_recipes_creates_new_tag(self, mock_client):
+        """Test bulk tag where tag needs to be created."""
+        # Mock list_tags - tag doesn't exist
+        list_route = respx.get(
+            "https://test.mealie.example.com/api/organizers/tags"
+        ).mock(return_value=Response(200, json=[
+            {"id": "tag-1", "name": "Existing", "slug": "existing"}
+        ]))
+
+        # Mock create_tag for new tag
+        create_route = respx.post(
+            "https://test.mealie.example.com/api/organizers/tags"
+        ).mock(return_value=Response(201, json={
+            "id": "tag-new", "name": "NewTag", "slug": "newtag"
+        }))
+
+        # Mock bulk tag action
+        bulk_route = respx.post(
+            "https://test.mealie.example.com/api/recipes/bulk-actions/tag"
+        ).mock(return_value=Response(200, json={"success": True}))
+
+        result = mock_client.bulk_tag_recipes(
+            ["recipe-1"],
+            ["NewTag"]
+        )
+
+        assert list_route.called
+        assert create_route.called
+        assert bulk_route.called
+
+    @respx.mock
+    def test_bulk_categorize_recipes_creates_new_category(self, mock_client):
+        """Test bulk categorize where category needs to be created."""
+        # Mock list_categories - category doesn't exist
+        list_route = respx.get(
+            "https://test.mealie.example.com/api/organizers/categories"
+        ).mock(return_value=Response(200, json=[
+            {"id": "cat-1", "name": "Existing", "slug": "existing"}
+        ]))
+
+        # Mock create_category for new category
+        create_route = respx.post(
+            "https://test.mealie.example.com/api/organizers/categories"
+        ).mock(return_value=Response(201, json={
+            "id": "cat-new", "name": "NewCategory", "slug": "newcategory"
+        }))
+
+        # Mock bulk categorize action
+        bulk_route = respx.post(
+            "https://test.mealie.example.com/api/recipes/bulk-actions/categorize"
+        ).mock(return_value=Response(200, json={"success": True}))
+
+        result = mock_client.bulk_categorize_recipes(
+            ["recipe-1"],
+            ["NewCategory"]
+        )
+
+        assert list_route.called
+        assert create_route.called
+        assert bulk_route.called
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

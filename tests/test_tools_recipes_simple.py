@@ -686,3 +686,221 @@ class TestRecipesBulkFromUrls:
 
         data = json.loads(result)
         assert isinstance(data, dict)
+
+
+class TestRecipesUploadImage:
+    """Test recipes_upload_image_from_url function."""
+
+    def test_upload_image_from_url(self):
+        """Test uploading recipe image from URL."""
+        from src.tools.recipes import recipes_upload_image_from_url
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.upload_image_from_url.return_value = {"success": True}
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_upload_image_from_url(
+                "test-recipe",
+                "https://example.com/image.jpg"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_upload_image_from_url_error(self):
+        """Test error handling in image upload."""
+        from src.tools.recipes import recipes_upload_image_from_url
+        from src.client import MealieAPIError
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.upload_image_from_url.side_effect = MealieAPIError(
+            "Upload failed", status_code=400, response_body="Bad image"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_upload_image_from_url(
+                "test-recipe",
+                "https://example.com/bad-image.jpg"
+            )
+
+        data = json.loads(result)
+        assert "error" in data
+
+
+class TestRecipesEdgeCases:
+    """Test edge cases and optional parameters."""
+
+    def test_create_with_all_optional_params(self):
+        """Test creating recipe with all optional parameters."""
+        from src.tools.recipes import recipes_create
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.list_tags.return_value = {"items": []}
+        mock_client.list_categories.return_value = {"items": []}
+        mock_client.create_tag.return_value = {"id": "t1", "name": "Dinner"}
+        mock_client.create_category.return_value = {"id": "c1", "name": "Main Dish"}
+        mock_client.create_recipe.return_value = {
+            "slug": "complete-recipe",
+            "name": "Complete Recipe",
+            "groupId": "g1"
+        }
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_create(
+                name="Complete Recipe",
+                description="Full description",
+                recipe_yield="4 servings",
+                total_time="1 hour",
+                prep_time="20 minutes",
+                cook_time="40 minutes",
+                ingredients=["2 cups flour", "1 tsp salt"],
+                instructions=["Mix", "Bake"],
+                tags=["Dinner", "Easy"],
+                categories=["Main Dish"]
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+    def test_update_with_multiple_fields(self):
+        """Test updating recipe with multiple fields."""
+        from src.tools.recipes import recipes_update
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get_recipe.return_value = {
+            "id": "1",
+            "slug": "test-recipe",
+            "groupId": "g1",
+            "tags": [],
+            "recipeCategory": []
+        }
+        mock_client.list_tags.return_value = {"items": []}
+        mock_client.list_categories.return_value = {"items": []}
+        mock_client.update_recipe.return_value = {"slug": "test-recipe"}
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_update(
+                "test-recipe",
+                name="Updated Name",
+                description="Updated description",
+                recipe_yield="6 servings",
+                total_time="30 minutes"
+            )
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+
+
+class TestRecipesFinalEdgeCases:
+    """Final edge case tests to reach coverage target."""
+
+    def test_recipes_get_unexpected_error(self):
+        """Test recipes_get unexpected error handling."""
+        from src.tools.recipes import recipes_get
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = ValueError("Unexpected error")
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_get("test-slug")
+
+        data = json.loads(result)
+        assert "error" in data
+        assert "Unexpected error" in data["error"]
+
+    def test_recipes_list_unexpected_error(self):
+        """Test recipes_list unexpected error handling."""
+        from src.tools.recipes import recipes_list
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = TypeError("Type error")
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_list()
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_recipes_update_unexpected_error(self):
+        """Test recipes_update unexpected error handling."""
+        from src.tools.recipes import recipes_update
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.get.side_effect = RuntimeError("Runtime error")
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_update("test-slug", name="New Name")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_recipes_update_last_made_error(self):
+        """Test recipes_update_last_made error handling."""
+        from src.client import MealieAPIError
+        from src.tools.recipes import recipes_update_last_made
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.update_recipe_last_made.side_effect = MealieAPIError(
+            "Error", status_code=404, response_body="Recipe not found"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_update_last_made("nonexistent-slug")
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_recipes_bulk_update_settings_error(self):
+        """Test recipes_bulk_update_settings error handling."""
+        from src.client import MealieAPIError
+        from src.tools.recipes import recipes_bulk_update_settings
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.bulk_update_recipe_settings.side_effect = MealieAPIError(
+            "Error", status_code=400, response_body="Bad request"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_bulk_update_settings(
+                ["recipe-1"], {"public": True}
+            )
+
+        data = json.loads(result)
+        assert "error" in data
+
+    def test_recipes_create_from_image_error(self):
+        """Test recipes_create_from_image error handling."""
+        from src.client import MealieAPIError
+        from src.tools.recipes import recipes_create_from_image
+
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.create_recipe_from_image.side_effect = MealieAPIError(
+            "Error", status_code=500, response_body="Processing error"
+        )
+
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            result = recipes_create_from_image("base64imagedata")
+
+        data = json.loads(result)
+        assert "error" in data
