@@ -99,6 +99,9 @@ from tools.organizers import (
     tags_get,
     tags_update,
     tags_delete,
+    tools_list,
+    tools_create,
+    tools_get,
     tools_update,
     tools_delete,
 )
@@ -1325,6 +1328,42 @@ def mealie_tags_delete(tag_id: str) -> str:
         JSON string confirming deletion
     """
     return tags_delete(tag_id=tag_id)
+
+
+@mcp.tool()
+def mealie_tools_list() -> str:
+    """List all kitchen tools.
+
+    Returns:
+        JSON string with list of tools
+    """
+    return tools_list()
+
+
+@mcp.tool()
+def mealie_tools_create(name: str) -> str:
+    """Create a new kitchen tool.
+
+    Args:
+        name: Name for the new tool
+
+    Returns:
+        JSON string with created tool details
+    """
+    return tools_create(name=name)
+
+
+@mcp.tool()
+def mealie_tools_get(tool_id: str) -> str:
+    """Get a kitchen tool by ID.
+
+    Args:
+        tool_id: The tool's ID
+
+    Returns:
+        JSON string with tool details
+    """
+    return tools_get(tool_id=tool_id)
 
 
 @mcp.tool()

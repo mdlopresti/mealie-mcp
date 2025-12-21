@@ -17,6 +17,9 @@ from src.tools.organizers import (
     tags_get,
     tags_update,
     tags_delete,
+    tools_list,
+    tools_create,
+    tools_get,
     tools_update,
     tools_delete
 )
@@ -35,10 +38,13 @@ def create_mock_client(get_value=None, post_value=None, patch_value=None, delete
         mock.get_category = MagicMock(return_value=get_value)
         mock.list_tags = MagicMock(return_value=get_value)
         mock.get_tag = MagicMock(return_value=get_value)
+        mock.list_tools = MagicMock(return_value=get_value)
+        mock.get_tool = MagicMock(return_value=get_value)
     if post_value is not None:
         mock.post.return_value = post_value
         mock.create_category = MagicMock(return_value=post_value)
         mock.create_tag = MagicMock(return_value=post_value)
+        mock.create_tool = MagicMock(return_value=post_value)
     if patch_value is not None:
         mock.patch.return_value = patch_value
         mock.update_category = MagicMock(return_value=patch_value)
@@ -204,6 +210,49 @@ class TestTags:
 
 class TestTools:
     """Test tool management operations."""
+
+    def test_tools_list(self):
+        """Test listing kitchen tools."""
+        mock_data = {"items": [{"id": "1", "name": "Blender", "slug": "blender"}]}
+        mock_client = create_mock_client(get_value=mock_data)
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tools_list()
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+        assert data["success"] is True
+        assert "tools" in data
+        mock_client.list_tools.assert_called_once()
+
+    def test_tools_create(self):
+        """Test creating a kitchen tool."""
+        mock_data = {"id": "123", "name": "Blender", "slug": "blender"}
+        mock_client = create_mock_client(post_value=mock_data)
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tools_create(name="Blender")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+        assert data["success"] is True
+        assert "tool" in data
+        assert data["message"] == "Tool created successfully"
+        mock_client.create_tool.assert_called_once_with("Blender")
+
+    def test_tools_get(self):
+        """Test getting a kitchen tool by ID."""
+        mock_data = {"id": "123", "name": "Blender", "slug": "blender"}
+        mock_client = create_mock_client(get_value=mock_data)
+
+        with patch('src.tools.organizers.MealieClient', return_value=mock_client):
+            result = tools_get(tool_id="123")
+
+        data = json.loads(result)
+        assert isinstance(data, dict)
+        assert data["success"] is True
+        assert "tool" in data
+        mock_client.get_tool.assert_called_once_with("123")
 
     def test_tools_update(self):
         """Test updating a tool."""

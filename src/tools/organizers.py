@@ -350,6 +350,97 @@ def tags_delete(tag_id: str) -> str:
 # Tools Management
 # -----------------------------------------------------------------------------
 
+def tools_list() -> str:
+    """List all kitchen tools.
+
+    Returns:
+        JSON string with list of tools
+    """
+    try:
+        with MealieClient() as client:
+            tools = client.list_tools()
+            return json.dumps({
+                "success": True,
+                "tools": tools
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def tools_create(name: str) -> str:
+    """Create a new kitchen tool.
+
+    Args:
+        name: Name for the new tool
+
+    Returns:
+        JSON string with created tool details
+    """
+    try:
+        with MealieClient() as client:
+            tool = client.create_tool(name)
+            return json.dumps({
+                "success": True,
+                "message": "Tool created successfully",
+                "tool": tool
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def tools_get(tool_id: str) -> str:
+    """Get a kitchen tool by ID.
+
+    Args:
+        tool_id: The tool's ID
+
+    Returns:
+        JSON string with tool details
+    """
+    try:
+        with MealieClient() as client:
+            tool = client.get_tool(tool_id)
+            return json.dumps({
+                "success": True,
+                "tool": tool
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 def tools_update(
     tool_id: str,
     name: Optional[str] = None,

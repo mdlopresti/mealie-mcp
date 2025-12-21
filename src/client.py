@@ -1092,6 +1092,14 @@ class MealieClient:
         """Get a tag by ID."""
         return self.get(f"/api/organizers/tags/{tag_id}")
 
+    def create_tool(self, name: str) -> Dict[str, Any]:
+        """Create a new kitchen tool."""
+        return self.post("/api/organizers/tools", json={"name": name})
+
+    def get_tool(self, tool_id: str) -> Dict[str, Any]:
+        """Get a kitchen tool by ID."""
+        return self.get(f"/api/organizers/tools/{tool_id}")
+
     def update_category(
         self,
         category_id: str,
