@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2025-12-20
+
+### Added
+- Comprehensive test suite expansion achieving 50% code coverage milestone
+  - 307 new tests added (74 → 381 total passing tests)
+  - Client API tests: 48 tests covering all MealieClient methods
+  - Recipe tool tests: 36 tests for CRUD, bulk operations, error handling
+  - Shopping tool tests: 35 tests for lists, items, meal plan generation
+  - Mealplan tool tests: 34 tests for CRUD, rules, date-based queries
+  - Foods/Units tests: 26 tests for management and merge operations
+  - Organizers/Parser tests: 30 tests for categories, tags, tools, ingredient parsing
+  - Error handling tests across all modules (MealieAPIError and unexpected exceptions)
+  - Edge case tests for optional parameters and complex data structures
+  - Shared test infrastructure (conftest.py) with fixtures and mock helpers
+
+### Changed
+- Improved overall code coverage from 15% to 50% (+35%, +879 lines covered)
+- Module coverage improvements:
+  - client.py: 36% → 79%
+  - foods.py: 16% → 79%
+  - mealplans.py: 62% → 78%
+  - recipes.py: 72% → 77%
+  - organizers.py: 68% → 87%
+  - shopping.py: 54% → 67%
+  - parser.py: 51% (maintained)
+
+### Testing Infrastructure
+- Established testing patterns using respx for HTTP mocking
+- Implemented context manager mocking for MealieClient instances
+- Created reusable test helpers and fixtures
+- Focused on coverage-driven testing with practical assertions
+
 ## [1.6.9] - 2025-12-21
 
 ### Added
