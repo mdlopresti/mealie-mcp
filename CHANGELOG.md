@@ -39,6 +39,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `get_recipe_comments`, `create_comment`, `get_comment`, `update_comment`, and `delete_comment` methods to MealieClient (#27)
 - Added 5 MCP tools for comment management: `mealie_comments_get_recipe`, `create`, `get`, `update`, `delete` (#27)
 - Added comprehensive test coverage for all comment operations (#27)
+- Added recipe timeline events management with full CRUD operations (#28)
+- Created `src/tools/timeline.py` with 6 timeline event management functions (#28)
+- Added `list_timeline_events`, `get_timeline_event`, `create_timeline_event`, `update_timeline_event`, `delete_timeline_event`, and `update_timeline_event_image` methods to MealieClient (#28)
+- Added 6 MCP tools for timeline management: `mealie_timeline_list`, `create`, `get`, `update`, `delete`, `update_image` (#28)
+- Added comprehensive test coverage for all timeline operations (#28)
 
 ### Impact
 - Completes full CRUD functionality for all organizers (categories, tags, and kitchen tools)
@@ -48,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enables programmatic creation of measurement units for recipe import workflows (#26)
 - Enables cookbook management for organizing recipes into themed collections (#24)
 - Supports meal planning workflows with cookbook-based recipe organization (#24)
+- Enables tracking of when recipes were made and building cooking history analytics (#28)
+- Supports recipe popularity tracking and visual timeline of cooking history (#28)
 - Enables recipe iteration tracking through comments (#27)
 - Supports collaborative recipe development with comment management (#27)
 - Enables kitchen tool management during recipe imports

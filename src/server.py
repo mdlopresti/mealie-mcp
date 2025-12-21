@@ -40,6 +40,14 @@ from tools.recipes import (
     recipes_create_from_image,
     recipes_upload_image_from_url,
 )
+from tools.timeline import (
+    timeline_list,
+    timeline_get,
+    timeline_create,
+    timeline_update,
+    timeline_delete,
+    timeline_update_image,
+)
 from tools.mealplans import (
     mealplans_list,
     mealplans_today,
@@ -1616,6 +1624,157 @@ def mealie_comments_delete(comment_id: str) -> str:
 # -----------------------------------------------------------------------------
 # Parser Tools (Phase 5)
 # -----------------------------------------------------------------------------
+
+# =============================================================================
+# Recipe Timeline Events
+# =============================================================================
+
+@mcp.tool()
+def mealie_timeline_list(
+    page: int = 1,
+    per_page: int = 50,
+    order_by: Optional[str] = None,
+    order_direction: Optional[str] = None,
+    query_filter: Optional[str] = None,
+) -> str:
+    """List all recipe timeline events with pagination.
+
+    Timeline events track when recipes were made and build cooking history analytics.
+
+    Args:
+        page: Page number (1-indexed)
+        per_page: Number of events per page
+        order_by: Field to order by
+        order_direction: "asc" or "desc"
+        query_filter: Filter query string
+
+    Returns:
+        JSON string with paginated timeline events data
+    """
+    return timeline_list(
+        page=page,
+        per_page=per_page,
+        order_by=order_by,
+        order_direction=order_direction,
+        query_filter=query_filter,
+    )
+
+
+@mcp.tool()
+def mealie_timeline_get(event_id: str) -> str:
+    """Get a specific timeline event by ID.
+
+    Args:
+        event_id: Timeline event ID (UUID)
+
+    Returns:
+        JSON string with timeline event details
+    """
+    return timeline_get(event_id)
+
+
+@mcp.tool()
+def mealie_timeline_create(
+    recipe_id: str,
+    subject: str,
+    event_type: str = "info",
+    event_message: Optional[str] = None,
+    user_id: Optional[str] = None,
+    timestamp: Optional[str] = None,
+) -> str:
+    """Create a new timeline event for a recipe.
+
+    Use this to track when recipes were made or add notes to recipe history.
+
+    Args:
+        recipe_id: Recipe ID (UUID)
+        subject: Event subject/title
+        event_type: Event type - "system", "info", or "comment" (default: "info")
+        event_message: Optional event message/description
+        user_id: Optional user ID (UUID)
+        timestamp: Optional ISO 8601 timestamp (defaults to current time)
+
+    Returns:
+        JSON string with created timeline event data
+    """
+    return timeline_create(
+        recipe_id=recipe_id,
+        subject=subject,
+        event_type=event_type,
+        event_message=event_message,
+        user_id=user_id,
+        timestamp=timestamp,
+    )
+
+
+@mcp.tool()
+def mealie_timeline_update(
+    event_id: str,
+    subject: Optional[str] = None,
+    event_type: Optional[str] = None,
+    event_message: Optional[str] = None,
+    timestamp: Optional[str] = None,
+) -> str:
+    """Update an existing timeline event.
+
+    Args:
+        event_id: Timeline event ID (UUID)
+        subject: New subject/title
+        event_type: New event type - "system", "info", or "comment"
+        event_message: New event message/description
+        timestamp: New ISO 8601 timestamp
+
+    Returns:
+        JSON string with updated timeline event data
+    """
+    return timeline_update(
+        event_id=event_id,
+        subject=subject,
+        event_type=event_type,
+        event_message=event_message,
+        timestamp=timestamp,
+    )
+
+
+@mcp.tool()
+def mealie_timeline_delete(event_id: str) -> str:
+    """Delete a timeline event.
+
+    Args:
+        event_id: Timeline event ID (UUID)
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return timeline_delete(event_id)
+
+
+@mcp.tool()
+def mealie_timeline_update_image(event_id: str, image_url: str) -> str:
+    """Upload or update an image for a timeline event from a URL.
+
+    Downloads an image from the provided URL and uploads it to the specified
+    timeline event. The image will be automatically resized and optimized by Mealie.
+
+    Args:
+        event_id: Timeline event ID (UUID)
+        image_url: Full URL of the image to download and upload
+
+    Returns:
+        JSON string with upload confirmation or error details
+
+    Example:
+        mealie_timeline_update_image(
+            event_id="550e8400-e29b-41d4-a716-446655440000",
+            image_url="https://example.com/my-dish.jpg"
+        )
+    """
+    return timeline_update_image(event_id=event_id, image_url=image_url)
+
+
+# =============================================================================
+# Ingredient Parser
+# =============================================================================
 
 @mcp.tool()
 def mealie_parser_ingredient(ingredient: str, parser: str = "nlp") -> str:
