@@ -23,11 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `mealie_tools_get` MCP tool to get kitchen tool by ID (#23)
 - Added `create_tool` and `get_tool` methods to MealieClient (#23)
 - Added comprehensive test coverage for all kitchen tool operations (#23)
+- Added `mealie_foods_create` MCP tool to create new foods (#25)
+- Added `create_food` method to MealieClient for creating food items (#25)
+- Added comprehensive test coverage for food creation (#25)
 
 ### Impact
 - Completes full CRUD functionality for all organizers (categories, tags, and kitchen tools)
 - Enables automated recipe organization workflows with complete organizer management
 - Allows programmatic category, tag, and tool management for bulk operations
+- Enables programmatic creation of food items for recipe import workflows (#25)
 - Enables kitchen tool management during recipe imports
 - Provides complete foundation for recipe organization automation
 

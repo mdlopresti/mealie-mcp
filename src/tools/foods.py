@@ -53,6 +53,44 @@ def foods_list(page: int = 1, per_page: int = 50) -> str:
         return json.dumps(error_result, indent=2)
 
 
+def foods_create(
+    name: str,
+    description: Optional[str] = None,
+    label_id: Optional[str] = None
+) -> str:
+    """Create a new food.
+
+    Args:
+        name: Name for the new food
+        description: Optional description
+        label_id: Optional label ID (UUID) to assign
+
+    Returns:
+        JSON string with created food details
+    """
+    try:
+        with MealieClient() as client:
+            result = client.create_food(name, description, label_id)
+            return json.dumps({
+                "success": True,
+                "message": "Food created successfully",
+                "food": result
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 def foods_get(food_id: str) -> str:
     """Get a specific food by ID.
 
