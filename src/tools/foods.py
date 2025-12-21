@@ -85,7 +85,7 @@ def foods_update(
     food_id: str,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    label: Optional[str] = None
+    label_id: Optional[str] = None
 ) -> str:
     """Update an existing food.
 
@@ -93,14 +93,14 @@ def foods_update(
         food_id: The food's ID
         name: New name for the food
         description: New description
-        label: New label
+        label_id: Label ID (UUID) to assign to the food
 
     Returns:
         JSON string with updated food details
     """
     try:
         with MealieClient() as client:
-            food = client.update_food(food_id, name, description, label)
+            food = client.update_food(food_id, name, description, label_id)
             return json.dumps({
                 "success": True,
                 "message": "Food updated successfully",

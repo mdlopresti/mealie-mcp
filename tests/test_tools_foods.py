@@ -268,23 +268,27 @@ class TestFoodsAdvanced:
 
     def test_foods_update_multiple_fields(self):
         """Test updating food with multiple fields."""
-        mock_client = create_mock_client(patch_value={
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.update_food.return_value = {
             "id": "1",
             "name": "Updated Food",
             "description": "Updated description",
-            "label": "Updated label"
-        })
+            "labelId": "label-uuid-123"
+        }
 
         with patch('src.tools.foods.MealieClient', return_value=mock_client):
             result = foods_update(
                 "food-1",
                 name="Updated Food",
                 description="Updated description",
-                label="Updated label"
+                label_id="label-uuid-123"
             )
 
         data = json.loads(result)
         assert isinstance(data, dict)
+        assert data["success"] is True
 
     def test_units_update_with_abbreviation(self):
         """Test updating unit with abbreviation."""

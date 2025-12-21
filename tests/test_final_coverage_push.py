@@ -403,11 +403,11 @@ class TestFinalCoveragePush:
         mock_client = MagicMock()
         mock_client.__enter__ = MagicMock(return_value=mock_client)
         mock_client.__exit__ = MagicMock(return_value=None)
-        mock_client.patch.return_value = {
+        mock_client.update_food.return_value = {
             "id": "f1",
             "name": "Updated Food",
             "description": "Updated description",
-            "label": "Updated label"
+            "labelId": "label-uuid-456"
         }
 
         with patch('src.tools.foods.MealieClient', return_value=mock_client):
@@ -415,11 +415,12 @@ class TestFinalCoveragePush:
                 "f1",
                 name="Updated Food",
                 description="Updated description",
-                label="Updated label"
+                label_id="label-uuid-456"
             )
 
         data = json.loads(result)
         assert isinstance(data, dict)
+        assert data["success"] is True
 
     def test_units_update_with_all_fields(self):
         """Test unit update with all fields."""

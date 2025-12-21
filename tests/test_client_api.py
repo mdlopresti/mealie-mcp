@@ -274,14 +274,31 @@ class TestFoodUnitAPIs:
     @respx.mock
     def test_update_food(self, mock_client):
         """Test update food."""
-        route = respx.patch(
+        # Mock GET to fetch current food
+        get_route = respx.get(
             "https://test.mealie.example.com/api/foods/food-1"
-        ).mock(return_value=Response(200, json={"id": "food-1", "name": "Whole Wheat Flour"}))
+        ).mock(return_value=Response(200, json={
+            "id": "food-1",
+            "name": "Flour",
+            "description": "Plain flour",
+            "labelId": None
+        }))
+
+        # Mock PUT to update food
+        put_route = respx.put(
+            "https://test.mealie.example.com/api/foods/food-1"
+        ).mock(return_value=Response(200, json={
+            "id": "food-1",
+            "name": "Whole Wheat Flour",
+            "description": "Plain flour",
+            "labelId": None
+        }))
 
         result = mock_client.update_food("food-1", name="Whole Wheat Flour")
 
         assert result["name"] == "Whole Wheat Flour"
-        assert route.called
+        assert get_route.called
+        assert put_route.called
 
     @respx.mock
     def test_delete_food(self, mock_client):

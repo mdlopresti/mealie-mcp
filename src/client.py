@@ -864,18 +864,36 @@ class MealieClient:
         food_id: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        label: Optional[str] = None
+        label_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Update an existing food."""
-        payload = {}
-        if name is not None:
-            payload["name"] = name
-        if description is not None:
-            payload["description"] = description
-        if label is not None:
-            payload["label"] = label
+        """Update an existing food.
 
-        return self.patch(f"/api/foods/{food_id}", json=payload)
+        Args:
+            food_id: The food's ID
+            name: New name for the food
+            description: New description
+            label_id: New label ID (UUID) to assign to the food
+
+        Returns:
+            Updated food object
+
+        Note:
+            The Mealie API requires PUT with the full food object.
+            This method fetches the current food first, then updates it.
+        """
+        # GET current food to preserve all fields
+        current_food = self.get(f"/api/foods/{food_id}")
+
+        # Update only the provided fields
+        if name is not None:
+            current_food["name"] = name
+        if description is not None:
+            current_food["description"] = description
+        if label_id is not None:
+            current_food["labelId"] = label_id
+
+        # PUT the complete updated object
+        return self.put(f"/api/foods/{food_id}", json=current_food)
 
     def delete_food(self, food_id: str) -> None:
         """Delete a food."""
