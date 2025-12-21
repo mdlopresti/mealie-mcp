@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.2] - 2025-12-21
+
+### Fixed
+- Fixed `mealie_foods_update` MCP tool wrapper to use `label_id` parameter instead of `label` (#17)
+- Completed the fix from #16 by updating server.py to match the updated signature in client.py and foods.py
+
+### Impact
+- MCP tool now properly accepts `label_id` parameter for assigning labels to foods
+- Resolves validation error when calling `mealie_foods_update` with label_id argument
+
 ## [1.7.1] - 2025-12-20
 
 ### Fixed
