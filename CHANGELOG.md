@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2025-12-23
+
 ### Added
 - Added `mealie_categories_list` MCP tool to list all categories (#21)
 - Added `mealie_categories_create` MCP tool to create new categories (#21)
@@ -605,6 +607,8 @@ mealie_recipes_update_structured_ingredients(
 - GitHub Actions CI/CD for automated builds
 - Published to GitHub Container Registry (ghcr.io)
 
+[1.8.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.8.0
+[1.7.2]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.7.2
 [1.3.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.3.0
 [1.2.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.2.0
 [1.1.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.1.0
