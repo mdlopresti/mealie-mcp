@@ -605,3 +605,30 @@ def test_recipe_search_with_category_filter(
     assert "items" in search_result
     found_slugs = [r["slug"] for r in search_result["items"]]
     assert recipe1_slug in found_slugs, "Categorized recipe should be in results"
+
+
+@pytest.mark.e2e
+def test_recipe_suggestions_workflow(e2e_client: MealieClient):
+    """
+    Test workflow: Get recipe suggestions with default and custom limits.
+
+    Validates that recipe suggestions can be retrieved from the live API.
+    """
+    # Get suggestions with default limit
+    suggestions_default = e2e_client.get_recipe_suggestions()
+    
+    assert isinstance(suggestions_default, list), "Suggestions should be a list"
+    # Note: May be empty if no recipes exist or no history, but should not error
+    assert len(suggestions_default) <= 10, "Default limit should be 10"
+    
+    # Get suggestions with custom limit (5)
+    suggestions_custom = e2e_client.get_recipe_suggestions(limit=5)
+    
+    assert isinstance(suggestions_custom, list), "Suggestions should be a list"
+    assert len(suggestions_custom) <= 5, "Custom limit should be respected"
+    
+    # If we have suggestions, verify structure
+    if len(suggestions_default) > 0:
+        first_suggestion = suggestions_default[0]
+        assert "name" in first_suggestion, "Suggestion should have a name"
+        assert "slug" in first_suggestion, "Suggestion should have a slug"

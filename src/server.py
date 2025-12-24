@@ -39,6 +39,9 @@ from tools.recipes import (
     recipes_bulk_update_settings,
     recipes_create_from_image,
     recipes_upload_image_from_url,
+    recipes_add_favorite,
+    recipes_remove_favorite,
+    recipes_get_favorites,
 )
 from tools.timeline import (
     timeline_list,
@@ -536,6 +539,184 @@ def mealie_recipes_upload_image_from_url(slug: str, image_url: str) -> str:
         )
     """
     return recipes_upload_image_from_url(slug=slug, image_url=image_url)
+
+
+@mcp.tool()
+def mealie_recipes_shared_list(recipe_id: str | None = None) -> str:
+    """List all shared recipe links.
+
+    Args:
+        recipe_id: Optional recipe ID to filter by (UUID)
+
+    Returns:
+        JSON string with list of shared recipe links
+    """
+    return recipes_shared_list(recipe_id=recipe_id)
+
+
+@mcp.tool()
+def mealie_recipes_shared_create(recipe_id: str, expires_at: str | None = None) -> str:
+    """Create a share link for a recipe.
+
+    Args:
+        recipe_id: Recipe ID to share (UUID)
+        expires_at: Optional expiration datetime (ISO 8601 format)
+
+    Returns:
+        JSON string with created share link data including token
+    """
+    return recipes_shared_create(recipe_id=recipe_id, expires_at=expires_at)
+
+
+@mcp.tool()
+def mealie_recipes_shared_get(item_id: str) -> str:
+    """Get details of a shared recipe by ID.
+
+    Args:
+        item_id: Share link ID (UUID)
+
+    Returns:
+        JSON string with shared recipe link details
+    """
+    return recipes_shared_get(item_id=item_id)
+
+
+@mcp.tool()
+def mealie_recipes_shared_delete(item_id: str) -> str:
+    """Delete a share link.
+
+    Args:
+        item_id: Share link ID (UUID)
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return recipes_shared_delete(item_id=item_id)
+
+
+@mcp.tool()
+def mealie_recipes_shared_access(token_id: str) -> str:
+    """Access a shared recipe by token (public endpoint).
+
+    Args:
+        token_id: Share token ID (UUID)
+
+    Returns:
+        JSON string with recipe data from shared link
+    """
+    return recipes_shared_access(token_id=token_id)
+
+
+@mcp.tool()
+def mealie_recipes_add_favorite(slug: str) -> str:
+    """Add a recipe to the current user's favorites.
+
+    Args:
+        slug: Recipe slug identifier
+
+    Returns:
+        JSON string with confirmation that recipe was added to favorites
+    """
+    return recipes_add_favorite(slug=slug)
+
+
+@mcp.tool()
+def mealie_recipes_remove_favorite(slug: str) -> str:
+    """Remove a recipe from the current user's favorites.
+
+    Args:
+        slug: Recipe slug identifier
+
+    Returns:
+        JSON string with confirmation that recipe was removed from favorites
+    """
+    return recipes_remove_favorite(slug=slug)
+
+
+@mcp.tool()
+def mealie_recipes_get_favorites() -> str:
+    """Get all favorite recipes for the current user.
+
+    Returns:
+        JSON string with list of favorite recipes including name, slug, description, and tags
+    """
+    return recipes_get_favorites()
+
+
+@mcp.tool()
+def mealie_recipes_get_suggestions(limit: int = 10) -> str:
+    """Get recipe suggestions based on preferences and history.
+
+    Returns suggested recipes that can be used for meal planning.
+    Suggestions are based on user preferences, ratings, and cooking history.
+
+    Args:
+        limit: Maximum number of suggestions to return (default 10)
+
+    Returns:
+        JSON string with suggested recipes including name, slug, description, and ratings
+
+    Example:
+        # Get 5 recipe suggestions
+        mealie_recipes_get_suggestions(limit=5)
+    """
+    return get_recipe_suggestions(limit=limit)
+
+
+@mcp.tool()
+def mealie_recipes_set_rating(slug: str, rating: float, is_favorite: bool | None = None) -> str:
+    """Set a rating (1-5 stars) for a recipe.
+
+    Allows users to rate recipes on a 1-5 star scale. Ratings help track favorite recipes
+    and inform meal planning decisions.
+
+    Args:
+        slug: Recipe slug identifier
+        rating: Rating value (0-5 stars, can be decimal like 4.5). Use 0 to clear rating.
+        is_favorite: Optional flag to mark as favorite (default: None)
+
+    Returns:
+        JSON string with updated rating data
+
+    Example:
+        mealie_recipes_set_rating(slug="chicken-parmesan", rating=5.0)
+        mealie_recipes_set_rating(slug="chicken-parmesan", rating=4.5, is_favorite=True)
+    """
+    return set_recipe_rating(slug=slug, rating=rating, is_favorite=is_favorite)
+
+
+@mcp.tool()
+def mealie_recipes_get_ratings() -> str:
+    """Get all ratings for the current user.
+
+    Returns a list of all recipes the user has rated, including the rating value
+    and favorite status for each recipe.
+
+    Returns:
+        JSON string with list of rated recipes and their ratings
+
+    Example:
+        mealie_recipes_get_ratings()
+    """
+    return get_user_ratings()
+
+
+@mcp.tool()
+def mealie_recipes_get_rating(recipe_id: str) -> str:
+    """Get rating for a specific recipe.
+
+    Retrieves the current user's rating for a specific recipe by its ID.
+
+    Args:
+        recipe_id: Recipe ID (UUID)
+
+    Returns:
+        JSON string with recipe rating data
+
+    Example:
+        mealie_recipes_get_rating(recipe_id="550e8400-e29b-41d4-a716-446655440000")
+    """
+    return get_recipe_rating(recipe_id=recipe_id)
 
 
 # -----------------------------------------------------------------------------

@@ -1412,6 +1412,113 @@ class MealieClient:
         """Delete a tool."""
         return self.delete(f"/api/organizers/tools/{tool_id}")
 
+    def add_recipe_favorite(self, slug: str) -> Dict[str, Any]:
+        """
+        Add recipe to current user's favorites.
+
+        Args:
+            slug: Recipe slug identifier
+
+        Returns:
+            Updated user favorites data
+
+        Raises:
+            MealieAPIError: If adding favorite fails
+        """
+        # Get user ID first
+        user = self.get("/api/users/self")
+        user_id = user["id"]
+
+        return self.post(f"/api/users/{user_id}/favorites/{slug}")
+
+    def remove_recipe_favorite(self, slug: str) -> Dict[str, Any]:
+        """
+        Remove recipe from current user's favorites.
+
+        Args:
+            slug: Recipe slug identifier
+
+        Returns:
+            Updated user favorites data
+
+        Raises:
+            MealieAPIError: If removing favorite fails
+        """
+        # Get user ID first
+        user = self.get("/api/users/self")
+        user_id = user["id"]
+
+        return self.delete(f"/api/users/{user_id}/favorites/{slug}")
+
+    def get_user_favorites(self) -> list[Dict[str, Any]]:
+        """
+        Get all favorite recipes for current user.
+
+        Returns:
+            List of favorite recipe objects
+
+        Raises:
+            MealieAPIError: If fetching favorites fails
+        """
+        return self.get("/api/users/self/favorites")
+
+    # -------------------------------------------------------------------------
+    # Recipe Ratings Management
+    # -------------------------------------------------------------------------
+
+    def set_recipe_rating(self, slug: str, rating: float, is_favorite: Optional[bool] = None) -> Dict[str, Any]:
+        """
+        Set rating for a recipe (1-5 stars).
+
+        Args:
+            slug: Recipe slug identifier
+            rating: Rating value (1-5 stars, or None to clear)
+            is_favorite: Optional flag to mark as favorite
+
+        Returns:
+            Updated rating data
+
+        Raises:
+            MealieAPIError: If rating update fails
+        """
+        # Get user ID first
+        user = self.get("/api/users/self")
+        user_id = user["id"]
+
+        # Build payload
+        payload = {"rating": rating}
+        if is_favorite is not None:
+            payload["isFavorite"] = is_favorite
+
+        return self.post(f"/api/users/{user_id}/ratings/{slug}", json=payload)
+
+    def get_user_ratings(self) -> Dict[str, Any]:
+        """
+        Get all ratings for current user.
+
+        Returns:
+            User ratings data with rated recipes
+
+        Raises:
+            MealieAPIError: If fetching ratings fails
+        """
+        return self.get("/api/users/self/ratings")
+
+    def get_recipe_rating(self, recipe_id: str) -> Dict[str, Any]:
+        """
+        Get rating for a specific recipe.
+
+        Args:
+            recipe_id: Recipe ID (UUID)
+
+        Returns:
+            Recipe rating data
+
+        Raises:
+            MealieAPIError: If fetching rating fails
+        """
+        return self.get(f"/api/users/self/ratings/{recipe_id}")
+
 
 if __name__ == "__main__":
     """
