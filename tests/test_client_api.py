@@ -54,6 +54,15 @@ class TestRecipeAPIs:
     @respx.mock
     def test_bulk_tag_recipes(self, mock_client, sample_tag):
         """Test bulk tag recipes."""
+        # Mock GET requests to convert recipe IDs to slugs
+        recipe1_route = respx.get(
+            "https://test.mealie.example.com/api/recipes/recipe-1"
+        ).mock(return_value=Response(200, json={"id": "recipe-1", "slug": "recipe-slug-1"}))
+
+        recipe2_route = respx.get(
+            "https://test.mealie.example.com/api/recipes/recipe-2"
+        ).mock(return_value=Response(200, json={"id": "recipe-2", "slug": "recipe-slug-2"}))
+
         # Mock list_tags call (client looks up existing tags)
         list_route = respx.get(
             "https://test.mealie.example.com/api/organizers/tags"
@@ -72,12 +81,23 @@ class TestRecipeAPIs:
             ["Vegan", "Quick"]
         )
 
+        assert recipe1_route.called
+        assert recipe2_route.called
         assert list_route.called
         assert route.called
 
     @respx.mock
     def test_bulk_categorize_recipes(self, mock_client):
         """Test bulk categorize recipes."""
+        # Mock GET requests to convert recipe IDs to slugs
+        recipe1_route = respx.get(
+            "https://test.mealie.example.com/api/recipes/recipe-1"
+        ).mock(return_value=Response(200, json={"id": "recipe-1", "slug": "recipe-slug-1"}))
+
+        recipe2_route = respx.get(
+            "https://test.mealie.example.com/api/recipes/recipe-2"
+        ).mock(return_value=Response(200, json={"id": "recipe-2", "slug": "recipe-slug-2"}))
+
         # Mock list_categories call (client looks up existing categories)
         list_route = respx.get(
             "https://test.mealie.example.com/api/organizers/categories"
@@ -96,6 +116,8 @@ class TestRecipeAPIs:
             ["Dinner", "Main"]
         )
 
+        assert recipe1_route.called
+        assert recipe2_route.called
         assert list_route.called
         assert route.called
 
@@ -666,6 +688,11 @@ class TestBulkOperationsWithCreation:
     @respx.mock
     def test_bulk_tag_recipes_creates_new_tag(self, mock_client):
         """Test bulk tag where tag needs to be created."""
+        # Mock GET request to convert recipe ID to slug
+        recipe_route = respx.get(
+            "https://test.mealie.example.com/api/recipes/recipe-1"
+        ).mock(return_value=Response(200, json={"id": "recipe-1", "slug": "recipe-slug-1"}))
+
         # Mock list_tags - tag doesn't exist
         list_route = respx.get(
             "https://test.mealie.example.com/api/organizers/tags"
@@ -690,6 +717,7 @@ class TestBulkOperationsWithCreation:
             ["NewTag"]
         )
 
+        assert recipe_route.called
         assert list_route.called
         assert create_route.called
         assert bulk_route.called
@@ -697,6 +725,11 @@ class TestBulkOperationsWithCreation:
     @respx.mock
     def test_bulk_categorize_recipes_creates_new_category(self, mock_client):
         """Test bulk categorize where category needs to be created."""
+        # Mock GET request to convert recipe ID to slug
+        recipe_route = respx.get(
+            "https://test.mealie.example.com/api/recipes/recipe-1"
+        ).mock(return_value=Response(200, json={"id": "recipe-1", "slug": "recipe-slug-1"}))
+
         # Mock list_categories - category doesn't exist
         list_route = respx.get(
             "https://test.mealie.example.com/api/organizers/categories"
@@ -721,6 +754,7 @@ class TestBulkOperationsWithCreation:
             ["NewCategory"]
         )
 
+        assert recipe_route.called
         assert list_route.called
         assert create_route.called
         assert bulk_route.called
