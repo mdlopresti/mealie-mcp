@@ -1,212 +1,250 @@
-"""Fixtures for unit tests.
+"""
+Pytest fixtures for unit tests.
 
-Provides reusable pytest fixtures specifically for unit testing.
-For integration test fixtures (respx mocking, HTTP clients), see ../conftest.py.
+Provides fixtures for mocking external dependencies, creating test clients,
+and setting up isolated unit test environments.
 
-These fixtures use the builders from builders.py to generate consistent test data.
+Unit tests focus on testing individual components (client methods, tool functions)
+in isolation without external dependencies (no real HTTP calls, no Docker, no MCP server).
 """
 
 import pytest
-from unittest.mock import MagicMock
-from tests.unit.builders import (
-    build_recipe,
-    build_mealplan,
-    build_shopping_list,
-    build_shopping_item,
-    build_tag,
-    build_category,
-    build_tool,
-    build_food,
-    build_unit,
-    build_cookbook,
-    build_comment,
-    build_timeline_event,
-    build_parsed_ingredient
-)
+import httpx
+from typing import Generator, Dict, Any
+from unittest.mock import Mock, MagicMock, patch
+from src.client import MealieClient
 
 
 @pytest.fixture
-def sample_recipe():
-    """Sample recipe for testing."""
-    return build_recipe()
-
-
-@pytest.fixture
-def sample_mealplan():
-    """Sample meal plan for testing."""
-    return build_mealplan()
-
-
-@pytest.fixture
-def sample_shopping_list():
-    """Sample shopping list for testing."""
-    return build_shopping_list()
-
-
-@pytest.fixture
-def sample_shopping_item():
-    """Sample shopping list item for testing."""
-    return build_shopping_item()
-
-
-@pytest.fixture
-def sample_tag():
-    """Sample tag for testing."""
-    return build_tag()
-
-
-@pytest.fixture
-def sample_category():
-    """Sample category for testing."""
-    return build_category()
-
-
-@pytest.fixture
-def sample_tool():
-    """Sample kitchen tool for testing."""
-    return build_tool()
-
-
-@pytest.fixture
-def sample_food():
-    """Sample food for testing."""
-    return build_food()
-
-
-@pytest.fixture
-def sample_unit():
-    """Sample unit for testing."""
-    return build_unit()
-
-
-@pytest.fixture
-def sample_cookbook():
-    """Sample cookbook for testing."""
-    return build_cookbook()
-
-
-@pytest.fixture
-def sample_comment():
-    """Sample comment for testing."""
-    return build_comment()
-
-
-@pytest.fixture
-def sample_timeline_event():
-    """Sample timeline event for testing."""
-    return build_timeline_event()
-
-
-@pytest.fixture
-def sample_parsed_ingredient():
-    """Sample parsed ingredient for testing."""
-    return build_parsed_ingredient()
-
-
-@pytest.fixture
-def mock_client_isolated():
-    """Isolated mock client (no HTTP, no side effects).
-
-    Use this for pure unit tests that don't need actual HTTP mocking.
-    For tests that need to mock HTTP responses, use the respx fixtures
-    from ../conftest.py instead.
+def mock_httpx_client() -> Generator[Mock, None, None]:
+    """
+    Create a mock httpx.Client for testing without real HTTP calls.
 
     Returns:
-        MagicMock configured as a MealieClient
+        Mock httpx.Client instance
 
     Example:
-        >>> def test_something(mock_client_isolated):
-        ...     mock_client_isolated.get_recipe.return_value = build_recipe()
-        ...     result = my_function(mock_client_isolated)
-        ...     assert result is not None
+        def test_get_recipe(mock_httpx_client):
+            mock_httpx_client.get.return_value.json.return_value = {"name": "Test Recipe"}
+            mock_httpx_client.get.return_value.status_code = 200
+
+            client = MealieClient("http://test", "token")
+            client.client = mock_httpx_client
+
+            recipe = client.get_recipe("test-recipe")
+            assert recipe["name"] == "Test Recipe"
     """
-    client = MagicMock()
-    client.base_url = "https://test.example.com"
-    client.api_token = "test-token"
+    mock_client = MagicMock(spec=httpx.Client)
+    yield mock_client
+
+
+@pytest.fixture
+def mock_mealie_client(mock_httpx_client: Mock) -> MealieClient:
+    """
+    Create a MealieClient with mocked httpx.Client.
+
+    This allows testing client methods without making real HTTP requests.
+    Configure mock_httpx_client responses to test different scenarios.
+
+    Args:
+        mock_httpx_client: Mocked httpx.Client fixture
+
+    Returns:
+        MealieClient with mocked HTTP client
+
+    Example:
+        def test_client_method(mock_mealie_client, mock_httpx_client):
+            # Configure mock response
+            mock_httpx_client.get.return_value.json.return_value = {"name": "Test"}
+            mock_httpx_client.get.return_value.status_code = 200
+
+            # Test client method
+            result = mock_mealie_client.get_recipe("test-slug")
+
+            # Verify
+            assert result["name"] == "Test"
+            mock_httpx_client.get.assert_called_once()
+    """
+    client = MealieClient(
+        base_url="http://test.example.com",
+        api_token="test-token-12345"
+    )
+    client.client = mock_httpx_client
     return client
 
 
 @pytest.fixture
-def multiple_recipes():
-    """Generate multiple sample recipes for batch testing.
+def sample_recipe_response() -> Dict[str, Any]:
+    """
+    Sample recipe response data for testing.
 
     Returns:
-        List of 3 recipe dictionaries with different names and slugs
+        Dict representing a typical Mealie recipe response
     """
-    return [
-        build_recipe(name="Recipe 1", slug="recipe-1"),
-        build_recipe(name="Recipe 2", slug="recipe-2"),
-        build_recipe(name="Recipe 3", slug="recipe-3")
-    ]
-
-
-@pytest.fixture
-def multiple_mealplans():
-    """Generate multiple sample meal plans for batch testing.
-
-    Returns:
-        List of meal plans for different days and entry types
-    """
-    return [
-        build_mealplan(meal_date="2025-12-25", entry_type="breakfast"),
-        build_mealplan(meal_date="2025-12-25", entry_type="lunch"),
-        build_mealplan(meal_date="2025-12-25", entry_type="dinner"),
-        build_mealplan(meal_date="2025-12-26", entry_type="breakfast")
-    ]
-
-
-@pytest.fixture
-def shopping_list_with_items():
-    """Shopping list with multiple items for testing.
-
-    Returns:
-        Shopping list dictionary with 3 sample items
-    """
-    return build_shopping_list(
-        name="Test List",
-        listItems=[
-            build_shopping_item(note="2 cups flour", id="item-1"),
-            build_shopping_item(note="1 tsp salt", id="item-2", checked=True),
-            build_shopping_item(note="1 lb butter", id="item-3")
-        ]
-    )
-
-
-@pytest.fixture
-def recipe_with_full_details():
-    """Recipe with all fields populated for comprehensive testing.
-
-    Returns:
-        Recipe dictionary with tags, categories, ingredients, and instructions
-    """
-    return build_recipe(
-        name="Comprehensive Recipe",
-        slug="comprehensive-recipe",
-        description="A recipe with all fields populated",
-        recipeYield="6 servings",
-        totalTime="1 hour 30 minutes",
-        prepTime="30 minutes",
-        cookTime="1 hour",
-        recipeIngredient=[
-            "2 cups all-purpose flour",
-            "1 tsp baking powder",
-            "1/2 tsp salt",
-            "1 cup sugar",
-            "2 large eggs"
+    return {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "slug": "test-recipe",
+        "name": "Test Recipe",
+        "description": "A test recipe for unit testing",
+        "recipeYield": "4 servings",
+        "totalTime": "30 minutes",
+        "prepTime": "10 minutes",
+        "cookTime": "20 minutes",
+        "recipeIngredient": [
+            "2 cups flour",
+            "1 tsp salt",
+            "1 cup water"
         ],
-        recipeInstructions=[
-            {"text": "Preheat oven to 350F"},
+        "recipeInstructions": [
             {"text": "Mix dry ingredients"},
-            {"text": "Beat eggs and sugar"},
-            {"text": "Combine wet and dry"},
-            {"text": "Bake for 45 minutes"}
+            {"text": "Add water and stir"},
+            {"text": "Cook for 20 minutes"}
         ],
-        tags=[
-            build_tag(name="Vegan"),
-            build_tag(name="Quick")
-        ],
-        recipeCategory=[
-            build_category(name="Dessert"),
-            build_category(name="Baking")
+        "tags": [{"name": "dinner", "slug": "dinner"}],
+        "categories": [{"name": "main-course", "slug": "main-course"}],
+        "rating": 4.5,
+        "orgURL": "https://example.com/recipe"
+    }
+
+
+@pytest.fixture
+def sample_mealplan_response() -> Dict[str, Any]:
+    """
+    Sample meal plan response data for testing.
+
+    Returns:
+        Dict representing a typical Mealie meal plan response
+    """
+    return {
+        "id": "650e8400-e29b-41d4-a716-446655440001",
+        "date": "2025-12-25",
+        "entryType": "dinner",
+        "title": "Christmas Dinner",
+        "text": "Special holiday meal",
+        "recipeId": "550e8400-e29b-41d4-a716-446655440000",
+        "recipe": {
+            "name": "Roast Turkey",
+            "slug": "roast-turkey"
+        }
+    }
+
+
+@pytest.fixture
+def sample_shopping_list_response() -> Dict[str, Any]:
+    """
+    Sample shopping list response data for testing.
+
+    Returns:
+        Dict representing a typical Mealie shopping list response
+    """
+    return {
+        "id": "750e8400-e29b-41d4-a716-446655440002",
+        "name": "Weekly Groceries",
+        "listItems": [
+            {
+                "id": "item-1",
+                "note": "2 lbs chicken breast",
+                "checked": False,
+                "quantity": 2.0,
+                "unit": {"name": "pound"}
+            },
+            {
+                "id": "item-2",
+                "note": "1 dozen eggs",
+                "checked": False,
+                "quantity": 1.0,
+                "unit": {"name": "dozen"}
+            }
         ]
+    }
+
+
+@pytest.fixture
+def mock_httpx_response() -> Mock:
+    """
+    Create a mock httpx.Response object.
+
+    Returns:
+        Mock httpx.Response
+
+    Example:
+        def test_with_response(mock_httpx_response):
+            mock_httpx_response.status_code = 200
+            mock_httpx_response.json.return_value = {"key": "value"}
+
+            # Use in tests
+            assert mock_httpx_response.status_code == 200
+            assert mock_httpx_response.json()["key"] == "value"
+    """
+    mock_response = MagicMock(spec=httpx.Response)
+    mock_response.status_code = 200
+    mock_response.json.return_value = {}
+    mock_response.text = ""
+    mock_response.raise_for_status = Mock()
+    return mock_response
+
+
+@pytest.fixture
+def mock_successful_response(
+    mock_httpx_response: Mock,
+    sample_recipe_response: Dict[str, Any]
+) -> Mock:
+    """
+    Pre-configured successful response with sample recipe data.
+
+    Args:
+        mock_httpx_response: Mock response fixture
+        sample_recipe_response: Sample recipe data
+
+    Returns:
+        Mock response configured for success (200 OK)
+    """
+    mock_httpx_response.status_code = 200
+    mock_httpx_response.json.return_value = sample_recipe_response
+    return mock_httpx_response
+
+
+@pytest.fixture
+def mock_error_response(mock_httpx_response: Mock) -> Mock:
+    """
+    Pre-configured error response (404 Not Found).
+
+    Args:
+        mock_httpx_response: Mock response fixture
+
+    Returns:
+        Mock response configured for error (404)
+    """
+    mock_httpx_response.status_code = 404
+    mock_httpx_response.json.return_value = {
+        "detail": "Recipe not found"
+    }
+    mock_httpx_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "404 Not Found",
+        request=Mock(),
+        response=mock_httpx_response
     )
+    return mock_httpx_response
+
+
+@pytest.fixture
+def mock_server_error_response(mock_httpx_response: Mock) -> Mock:
+    """
+    Pre-configured server error response (500 Internal Server Error).
+
+    Args:
+        mock_httpx_response: Mock response fixture
+
+    Returns:
+        Mock response configured for server error (500)
+    """
+    mock_httpx_response.status_code = 500
+    mock_httpx_response.json.return_value = {
+        "detail": "Internal server error"
+    }
+    mock_httpx_response.raise_for_status.side_effect = httpx.HTTPStatusError(
+        "500 Internal Server Error",
+        request=Mock(),
+        response=mock_httpx_response
+    )
+    return mock_httpx_response
