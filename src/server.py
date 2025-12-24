@@ -1802,6 +1802,157 @@ def mealie_comments_delete(comment_id: str) -> str:
     return comments_delete(comment_id=comment_id)
 
 
+# =============================================================================
+# Recipe Actions (Batch 2 - Phase 2.2)
+# =============================================================================
+
+@mcp.tool()
+def mealie_recipe_actions_list(
+    page: int = 1,
+    per_page: int = 50,
+    order_by: Optional[str] = None,
+    order_direction: Optional[str] = None
+) -> str:
+    """List all recipe actions with pagination.
+
+    Args:
+        page: Page number (default: 1)
+        per_page: Number of actions per page (default: 50)
+        order_by: Field to order by
+        order_direction: "asc" or "desc"
+
+    Returns:
+        JSON string with paginated recipe actions list
+    """
+    return recipe_actions_list(
+        page=page,
+        per_page=per_page,
+        order_by=order_by,
+        order_direction=order_direction
+    )
+
+
+@mcp.tool()
+def mealie_recipe_actions_create(
+    action_type: str,
+    title: str,
+    url: str
+) -> str:
+    """Create a new recipe action.
+
+    Recipe actions enable custom automation workflows for recipes. The action_type
+    determines how the action behaves when triggered:
+    - "link": Opens the URL with recipe slug appended
+    - "post": Sends a POST request to the URL with recipe data
+
+    Args:
+        action_type: Type of action - "link" or "post"
+        title: Display title for the action
+        url: URL for the action (webhook endpoint or link template)
+
+    Returns:
+        JSON string with created recipe action details
+
+    Examples:
+        # Create a webhook action to send recipe data to external service
+        action_type="post"
+        title="Send to Meal Planner"
+        url="https://mealplanner.example.com/api/recipes"
+
+        # Create a link action to open recipe in external app
+        action_type="link"
+        title="Open in MealPrep App"
+        url="mealprep://recipe/"
+    """
+    return recipe_actions_create(
+        action_type=action_type,
+        title=title,
+        url=url
+    )
+
+
+@mcp.tool()
+def mealie_recipe_actions_get(item_id: str) -> str:
+    """Get a specific recipe action by ID.
+
+    Args:
+        item_id: The recipe action's UUID
+
+    Returns:
+        JSON string with recipe action details
+    """
+    return recipe_actions_get(item_id=item_id)
+
+
+@mcp.tool()
+def mealie_recipe_actions_update(
+    item_id: str,
+    action_type: Optional[str] = None,
+    title: Optional[str] = None,
+    url: Optional[str] = None
+) -> str:
+    """Update an existing recipe action.
+
+    Args:
+        item_id: The recipe action's UUID
+        action_type: New action type - "link" or "post"
+        title: New display title
+        url: New URL
+
+    Returns:
+        JSON string with updated recipe action details
+    """
+    return recipe_actions_update(
+        item_id=item_id,
+        action_type=action_type,
+        title=title,
+        url=url
+    )
+
+
+@mcp.tool()
+def mealie_recipe_actions_delete(item_id: str) -> str:
+    """Delete a recipe action.
+
+    Args:
+        item_id: The recipe action's UUID to delete
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return recipe_actions_delete(item_id=item_id)
+
+
+@mcp.tool()
+def mealie_recipe_actions_trigger(
+    item_id: str,
+    recipe_slug: str
+) -> str:
+    """Trigger a recipe action for a specific recipe.
+
+    This executes the configured action for the given recipe. Behavior depends
+    on the action type:
+    - "link": Returns the constructed URL (recipe slug appended)
+    - "post": Sends POST request to the URL with recipe data
+
+    Args:
+        item_id: The recipe action's UUID
+        recipe_slug: The recipe's slug identifier
+
+    Returns:
+        JSON string with trigger results
+
+    Example:
+        # Trigger a webhook action to send recipe to external service
+        item_id="550e8400-e29b-41d4-a716-446655440000"
+        recipe_slug="sous-vide-salmon"
+    """
+    return recipe_actions_trigger(
+        item_id=item_id,
+        recipe_slug=recipe_slug
+    )
+
+
 # -----------------------------------------------------------------------------
 # Parser Tools (Phase 5)
 # -----------------------------------------------------------------------------

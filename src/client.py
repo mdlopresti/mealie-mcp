@@ -1316,6 +1316,139 @@ class MealieClient:
         return response.json()
 
     # -------------------------------------------------------------------------
+    # Webhooks Management
+    # -------------------------------------------------------------------------
+
+    def list_webhooks(self) -> list[Dict[str, Any]]:
+        """
+        List all webhooks.
+
+        Returns:
+            List of webhooks with their configuration
+
+        Raises:
+            MealieAPIError: If request fails
+        """
+        return self.get("/api/households/webhooks")
+
+    def create_webhook(
+        self,
+        url: str,
+        scheduled_time: str,
+        enabled: bool = True,
+        name: Optional[str] = None,
+        webhook_type: str = "mealplan"
+    ) -> Dict[str, Any]:
+        """
+        Create a new webhook.
+
+        Args:
+            url: Webhook URL to send notifications to
+            scheduled_time: Time to trigger webhook in HH:MM:SS format
+            enabled: Whether the webhook is enabled (default: True)
+            name: Optional name for the webhook
+            webhook_type: Type of webhook (default: "mealplan")
+
+        Returns:
+            Created webhook data
+
+        Raises:
+            MealieAPIError: If creation fails
+        """
+        payload = {
+            "url": url,
+            "scheduledTime": scheduled_time,
+            "enabled": enabled,
+            "webhookType": webhook_type,
+        }
+        if name is not None:
+            payload["name"] = name
+
+        return self.post("/api/households/webhooks", json=payload)
+
+    def get_webhook(self, item_id: str) -> Dict[str, Any]:
+        """
+        Get a webhook by ID.
+
+        Args:
+            item_id: Webhook ID (UUID)
+
+        Returns:
+            Webhook data
+
+        Raises:
+            MealieAPIError: If request fails
+        """
+        return self.get(f"/api/households/webhooks/{item_id}")
+
+    def update_webhook(
+        self,
+        item_id: str,
+        url: Optional[str] = None,
+        scheduled_time: Optional[str] = None,
+        enabled: Optional[bool] = None,
+        name: Optional[str] = None,
+        webhook_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Update an existing webhook.
+
+        Args:
+            item_id: Webhook ID (UUID)
+            url: New webhook URL
+            scheduled_time: New scheduled time in HH:MM:SS format
+            enabled: Whether the webhook is enabled
+            name: New name for the webhook
+            webhook_type: New webhook type
+
+        Returns:
+            Updated webhook data
+
+        Raises:
+            MealieAPIError: If update fails
+        """
+        # Get current webhook data
+        current = self.get_webhook(item_id)
+
+        # Build update payload with current values as defaults
+        payload = {
+            "url": url if url is not None else current.get("url"),
+            "scheduledTime": scheduled_time if scheduled_time is not None else current.get("scheduledTime"),
+            "enabled": enabled if enabled is not None else current.get("enabled"),
+            "name": name if name is not None else current.get("name", ""),
+            "webhookType": webhook_type if webhook_type is not None else current.get("webhookType"),
+        }
+
+        return self.put(f"/api/households/webhooks/{item_id}", json=payload)
+
+    def delete_webhook(self, item_id: str) -> None:
+        """
+        Delete a webhook.
+
+        Args:
+            item_id: Webhook ID (UUID)
+
+        Raises:
+            MealieAPIError: If deletion fails
+        """
+        self.delete(f"/api/households/webhooks/{item_id}")
+
+    def test_webhook(self, item_id: str) -> Dict[str, Any]:
+        """
+        Test a webhook by sending a test notification.
+
+        Args:
+            item_id: Webhook ID (UUID)
+
+        Returns:
+            Test result data
+
+        Raises:
+            MealieAPIError: If test fails
+        """
+        return self.post(f"/api/households/webhooks/{item_id}/test", json={})
+
+    # -------------------------------------------------------------------------
     # Organizers Management (Categories, Tags, Tools)
     # -------------------------------------------------------------------------
 
