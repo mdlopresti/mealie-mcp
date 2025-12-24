@@ -305,6 +305,27 @@ class TestClientMethodSignatures:
         assert 'slug' in sig.parameters
         assert 'ingredients' in sig.parameters
 
+    def test_set_recipe_rating_signature(self):
+        """Test set_recipe_rating method exists."""
+        client = MealieClient(base_url="https://test.com", api_token="token")
+        assert hasattr(client, 'set_recipe_rating')
+        sig = signature(client.set_recipe_rating)
+        assert 'slug' in sig.parameters
+        assert 'rating' in sig.parameters
+        assert 'is_favorite' in sig.parameters
+
+    def test_get_user_ratings_signature(self):
+        """Test get_user_ratings method exists."""
+        client = MealieClient(base_url="https://test.com", api_token="token")
+        assert hasattr(client, 'get_user_ratings')
+
+    def test_get_recipe_rating_signature(self):
+        """Test get_recipe_rating method exists."""
+        client = MealieClient(base_url="https://test.com", api_token="token")
+        assert hasattr(client, 'get_recipe_rating')
+        sig = signature(client.get_recipe_rating)
+        assert 'recipe_id' in sig.parameters
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

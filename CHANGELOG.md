@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added recipe ratings management with 3 new MCP tools (Phase 1.1)
+- Added `mealie_recipes_set_rating` tool to set 1-5 star ratings for recipes
+- Added `mealie_recipes_get_ratings` tool to get all user ratings
+- Added `mealie_recipes_get_rating` tool to get rating for a specific recipe
+- Added `set_recipe_rating`, `get_user_ratings`, and `get_recipe_rating` methods to MealieClient
+- Added support for favorite flag when setting ratings
+- Added 13 comprehensive tests for recipe ratings (10 unit tests + 3 client signature tests)
 - Added recipe suggestions with 1 new MCP tool (Phase 1.3)
 - Added `mealie_recipes_get_suggestions` tool to get personalized recipe suggestions based on user preferences and history
 - Added `get_recipe_suggestions` method to MealieClient for fetching AI-powered recipe recommendations
