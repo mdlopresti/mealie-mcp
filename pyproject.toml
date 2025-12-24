@@ -33,5 +33,8 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
 markers = [
-    "e2e: End-to-end tests requiring real Mealie instance"
+    "e2e: End-to-end tests requiring real Mealie instance (or Docker)",
+    "docker: Tests that require Docker to be running",
+    "slow: Slow-running tests (>5 seconds)"
 ]
+asyncio_mode = "auto"

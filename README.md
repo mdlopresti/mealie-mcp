@@ -198,30 +198,40 @@ pytest -m "not e2e"
 pytest --cov=src --cov-report=term-missing
 ```
 
-**End-to-End Tests** (require real Mealie instance, optional):
+**End-to-End Tests** (optional):
 
-E2E tests validate against a real Mealie instance and are skipped by default.
+E2E tests validate against a real Mealie instance. Two modes are supported:
 
-Setup:
+**Docker E2E Tests** (recommended - isolated environment):
+```bash
+# Install test dependencies
+pip install -r requirements-dev.txt
+
+# Run Docker E2E tests
+pytest tests/e2e/test_docker_e2e.py -v
+
+# These tests:
+# - Start a containerized Mealie instance automatically
+# - Run tests in isolated environment
+# - Clean up containers and data after tests
+# - Require Docker/Podman to be running
+```
+
+**Live Instance E2E Tests** (test against existing server):
 ```bash
 # Set required environment variables
 export MEALIE_E2E_URL="https://your-mealie-instance.com"
 export MEALIE_E2E_TOKEN="your-test-api-token"
-```
 
-Run:
-```bash
-# Run only E2E tests
+# Run E2E tests against live instance
 pytest -m e2e
 
-# Run all tests (unit + E2E)
-pytest
-
-# Run specific E2E test file
-pytest tests/e2e/test_recipes_e2e.py -v
+# These tests are skipped if environment variables are not set
 ```
 
-Note: E2E tests create and delete test resources (recipes, meal plans, etc.) in your Mealie instance. Use a test/development instance, not production!
+See [tests/e2e/README.md](tests/e2e/README.md) for detailed E2E testing documentation.
+
+Note: Live instance E2E tests create and delete test resources. Use a test/development instance, not production!
 
 ### Project Structure
 

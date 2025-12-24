@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  mealie-test:
+    image: ghcr.io/mealie-recipes/mealie:v1.12.0
+    container_name: mealie-test
+    restart: "no"
+    ports:
+      - "9925:9000"  # Use different port to avoid conflicts
+    environment:
+      # Database Configuration
+      DB_ENGINE: sqlite
+
+      # Security Settings
+      ALLOW_SIGNUP: "true"
+
+      # Base Configuration
+      BASE_URL: http://localhost:9925
+      TZ: America/Los_Angeles
+
+      # API Token (set via fixture at runtime)
+      # API_TOKEN will be generated and set by test fixtures
+
+      # Logging
+      LOG_LEVEL: INFO
+
+      # Performance - reduce for faster test startup
+      WORKERS: 1
+
+    volumes:
+      # Use named volume for test data (easy cleanup)
+      - mealie-test-data:/app/data
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/api/app/about"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  mealie-test-data:
+    name: mealie-test-data

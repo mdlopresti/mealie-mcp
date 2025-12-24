@@ -9,6 +9,11 @@ pytest-cov>=4.1.0
 respx>=0.22.0  # HTTP mocking for httpx (used in client tests)
 requests-mock>=1.12.0  # HTTP mocking compatibility
 
+# E2E Testing with Docker
+pytest-docker>=3.1.0  # Docker container management for E2E tests
+python-on-whales>=0.70.0  # Modern Docker Python client
+# Note: docker compose v2 CLI is used (built into Docker), no Python package needed
+
 # Type checking
 mypy>=1.8.0
 
