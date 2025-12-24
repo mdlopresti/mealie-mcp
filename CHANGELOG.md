@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added recipe favorites management with 3 new MCP tools (Phase 1.2)
+- Added `mealie_recipes_add_favorite` tool to add recipes to favorites
+- Added `mealie_recipes_remove_favorite` tool to remove recipes from favorites
+- Added `mealie_recipes_get_favorites` tool to list all favorite recipes for current user
+- Added `add_recipe_favorite`, `remove_recipe_favorite`, and `get_user_favorites` methods to MealieClient
+- Added comprehensive test coverage for all favorites operations (11 unit tests)
+- Added recipe suggestions with 1 new MCP tool (Phase 1.3)
+- Added `mealie_recipes_get_suggestions` tool to get personalized recipe suggestions based on user preferences and history
+- Added `get_recipe_suggestions` method to MealieClient for fetching AI-powered recipe recommendations
+- Added support for limiting the number of suggestions returned (default 10)
+- Added recipe ratings management with 3 new MCP tools (Phase 1.1)
+- Added `mealie_recipes_set_rating` tool to set 1-5 star ratings for recipes
+- Added `mealie_recipes_get_ratings` tool to get all user ratings
+- Added `mealie_recipes_get_rating` tool to get rating for a specific recipe
+- Added `set_recipe_rating`, `get_user_ratings`, and `get_recipe_rating` methods to MealieClient
+- Added support for favorite flag when setting ratings
+- Added shared recipes management with 5 new MCP tools (Phase 1.4)
+- Added `mealie_recipes_shared_list` tool to list all shared recipe links
+- Added `mealie_recipes_shared_create` tool to create share links for recipes
+- Added `mealie_recipes_shared_get` tool to get shared recipe details by ID
+- Added `mealie_recipes_shared_delete` tool to delete share links
+- Added `mealie_recipes_shared_access` tool to access recipes via public share tokens
+- Added `list_shared_recipes`, `create_shared_recipe`, `get_shared_recipe`, `delete_shared_recipe`, and `access_shared_recipe` methods to MealieClient
+- Added comprehensive test coverage with 20 unit tests for shared recipe operations
+- Added support for optional expiration dates when creating share links
+
 ## [1.8.0] - 2025-12-23
 
 ### Added
