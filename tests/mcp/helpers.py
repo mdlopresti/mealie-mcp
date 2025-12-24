@@ -7,7 +7,7 @@ Provides validation functions for MCP protocol compliance and tool testing.
 from typing import Any
 
 
-def validate_tool_registration(server, tool_name: str) -> bool:
+async def validate_tool_registration(server, tool_name: str) -> bool:
     """Check if a tool is registered with the MCP server.
 
     Args:
@@ -18,15 +18,10 @@ def validate_tool_registration(server, tool_name: str) -> bool:
         bool: True if tool is registered, False otherwise
 
     Example:
-        assert validate_tool_registration(mcp_server, "mealie_recipes_search")
+        assert await validate_tool_registration(mcp_server, "mealie_recipes_search")
     """
-    import asyncio
-
-    async def _check():
-        tools = await server.get_tools()
-        return tool_name in tools
-
-    return asyncio.run(_check())
+    tools = await server.get_tools()
+    return tool_name in tools
 
 
 def validate_tool_params(tool, expected_params: dict[str, bool]) -> bool:
