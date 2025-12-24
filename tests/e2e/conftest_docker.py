@@ -91,11 +91,11 @@ def mealie_container(
     """
     logger.info(f"Starting Mealie container with project: {docker_compose_project_name}")
 
-    # Start container with docker-compose
+    # Start container with docker compose v2
     try:
         subprocess.run(
             [
-                "docker-compose",
+                "docker", "compose",
                 "-f", str(docker_compose_file),
                 "-p", docker_compose_project_name,
                 "up", "-d"
@@ -149,7 +149,7 @@ def mealie_container(
         # Cleanup failed container
         subprocess.run(
             [
-                "docker-compose",
+                "docker", "compose",
                 "-f", str(docker_compose_file),
                 "-p", docker_compose_project_name,
                 "down", "-v"
@@ -176,7 +176,7 @@ def mealie_container(
     try:
         subprocess.run(
             [
-                "docker-compose",
+                "docker", "compose",
                 "-f", str(docker_compose_file),
                 "-p", docker_compose_project_name,
                 "down", "-v"  # -v removes volumes for clean slate
