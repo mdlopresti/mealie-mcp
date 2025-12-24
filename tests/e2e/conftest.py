@@ -2,6 +2,10 @@
 Pytest fixtures for E2E tests.
 
 Provides fixtures for real Mealie client, test data cleanup, and unique identifiers.
+
+Note: This file contains fixtures for testing against a live Mealie instance.
+      For Docker-based E2E testing with containerized Mealie instances,
+      see conftest_docker.py which provides docker_mealie_client and related fixtures.
 """
 
 import os
