@@ -2,17 +2,32 @@
 Shared pytest fixtures for Mealie MCP tests.
 
 Provides common test fixtures for mocking HTTP clients and API responses.
+
+For unit test-specific fixtures (isolated mocks, builders), see tests/unit/conftest.py.
+For mock data builders, see tests/unit/builders.py.
 """
 
 import pytest
 import respx
 from httpx import Response
 from src.client import MealieClient
+from tests.unit.builders import (
+    build_recipe,
+    build_mealplan,
+    build_shopping_list,
+    build_shopping_item,
+    build_tag,
+    build_category
+)
 
 
 @pytest.fixture
 def mock_client():
-    """Create a MealieClient with test configuration."""
+    """Create a MealieClient with test configuration.
+
+    This is the real MealieClient class for integration tests.
+    For isolated unit tests, use mock_client_isolated from tests/unit/conftest.py.
+    """
     return MealieClient(
         base_url="https://test.mealie.example.com",
         api_token="test-token-12345"
@@ -21,86 +36,90 @@ def mock_client():
 
 @pytest.fixture
 def respx_mock():
-    """Create a respx mock context for httpx requests."""
+    """Create a respx mock context for httpx requests.
+
+    Use this for integration tests that need to mock HTTP responses.
+    For pure unit tests without HTTP, use mock_client_isolated instead.
+    """
     with respx.mock:
         yield respx
 
 
 @pytest.fixture
 def sample_recipe():
-    """Sample recipe data for testing."""
-    return {
-        "id": "recipe-123",
-        "slug": "test-recipe",
-        "name": "Test Recipe",
-        "description": "A test recipe",
-        "recipeYield": "4 servings",
-        "totalTime": "30 minutes",
-        "prepTime": "10 minutes",
-        "cookTime": "20 minutes",
-        "recipeIngredient": ["2 cups flour", "1 tsp salt"],
-        "recipeInstructions": [
-            {"text": "Mix ingredients"},
-            {"text": "Bake at 350F"}
-        ],
-        "tags": [{"id": "tag-1", "name": "Dinner", "slug": "dinner"}],
-        "recipeCategory": [{"id": "cat-1", "name": "Main", "slug": "main"}],
-        "groupId": "group-123"
-    }
+    """Sample recipe data for testing.
+
+    Uses builder from tests/unit/builders.py for consistency.
+    """
+    return build_recipe(
+        id="recipe-123",
+        slug="test-recipe",
+        name="Test Recipe"
+    )
 
 
 @pytest.fixture
 def sample_mealplan():
-    """Sample meal plan entry for testing."""
-    return {
-        "id": "mealplan-123",
-        "date": "2025-12-25",
-        "entryType": "dinner",
-        "title": "Christmas Dinner",
-        "text": "Special holiday meal",
-        "recipeId": "recipe-123"
-    }
+    """Sample meal plan entry for testing.
+
+    Uses builder from tests/unit/builders.py for consistency.
+    """
+    return build_mealplan(
+        id="mealplan-123",
+        meal_date="2025-12-25",
+        entry_type="dinner",
+        title="Christmas Dinner",
+        text="Special holiday meal",
+        recipeId="recipe-123"
+    )
 
 
 @pytest.fixture
 def sample_shopping_list():
-    """Sample shopping list for testing."""
-    return {
-        "id": "list-123",
-        "name": "Weekly Shopping",
-        "listItems": [
-            {
-                "id": "item-1",
-                "note": "2 cups flour",
-                "checked": False,
-                "quantity": 2.0,
-                "unit": {"id": "unit-1", "name": "cup"},
-                "food": {"id": "food-1", "name": "flour"}
-            }
+    """Sample shopping list for testing.
+
+    Uses builder from tests/unit/builders.py for consistency.
+    """
+    return build_shopping_list(
+        id="list-123",
+        name="Weekly Shopping",
+        listItems=[
+            build_shopping_item(
+                id="item-1",
+                note="2 cups flour",
+                checked=False,
+                quantity=2.0,
+                unit={"id": "unit-1", "name": "cup"},
+                food={"id": "food-1", "name": "flour"}
+            )
         ]
-    }
+    )
 
 
 @pytest.fixture
 def sample_tag():
-    """Sample tag for testing."""
-    return {
-        "id": "tag-123",
-        "name": "Vegan",
-        "slug": "vegan",
-        "groupId": "group-123"
-    }
+    """Sample tag for testing.
+
+    Uses builder from tests/unit/builders.py for consistency.
+    """
+    return build_tag(
+        id="tag-123",
+        name="Vegan",
+        slug="vegan"
+    )
 
 
 @pytest.fixture
 def sample_category():
-    """Sample category for testing."""
-    return {
-        "id": "cat-123",
-        "name": "Dessert",
-        "slug": "dessert",
-        "groupId": "group-123"
-    }
+    """Sample category for testing.
+
+    Uses builder from tests/unit/builders.py for consistency.
+    """
+    return build_category(
+        id="cat-123",
+        name="Dessert",
+        slug="dessert"
+    )
 
 
 def create_json_response(data, status_code=200):

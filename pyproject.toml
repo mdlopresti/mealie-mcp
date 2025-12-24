@@ -32,3 +32,6 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+markers = [
+    "e2e: End-to-end tests requiring real Mealie instance"
+]

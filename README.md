@@ -187,6 +187,42 @@ export MEALIE_API_TOKEN=your-api-token
 python -m src.server
 ```
 
+### Running Tests
+
+**Unit/Integration Tests** (mock API, always run):
+```bash
+# Run all tests except E2E
+pytest -m "not e2e"
+
+# Run all tests with coverage
+pytest --cov=src --cov-report=term-missing
+```
+
+**End-to-End Tests** (require real Mealie instance, optional):
+
+E2E tests validate against a real Mealie instance and are skipped by default.
+
+Setup:
+```bash
+# Set required environment variables
+export MEALIE_E2E_URL="https://your-mealie-instance.com"
+export MEALIE_E2E_TOKEN="your-test-api-token"
+```
+
+Run:
+```bash
+# Run only E2E tests
+pytest -m e2e
+
+# Run all tests (unit + E2E)
+pytest
+
+# Run specific E2E test file
+pytest tests/e2e/test_recipes_e2e.py -v
+```
+
+Note: E2E tests create and delete test resources (recipes, meal plans, etc.) in your Mealie instance. Use a test/development instance, not production!
+
 ### Project Structure
 
 ```
