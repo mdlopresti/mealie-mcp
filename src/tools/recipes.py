@@ -1223,6 +1223,291 @@ def recipes_upload_image_from_url(slug: str, image_url: str) -> str:
         return json.dumps(error_result, indent=2)
 
 
+def set_recipe_rating(slug: str, rating: float, is_favorite: Optional[bool] = None) -> str:
+    """Set a rating (1-5 stars) for a recipe.
+
+    Args:
+        slug: Recipe slug identifier
+        rating: Rating value (1-5 stars, can be decimal like 4.5)
+        is_favorite: Optional flag to mark as favorite
+
+    Returns:
+        JSON string with updated rating data
+    """
+    try:
+        # Validate rating
+        if rating is not None and (rating < 0 or rating > 5):
+            error_result = {
+                "error": "Rating must be between 0 and 5"
+            }
+            return json.dumps(error_result, indent=2)
+
+        with MealieClient() as client:
+            result = client.set_recipe_rating(slug, rating, is_favorite)
+
+            return json.dumps({
+                "success": True,
+                "message": f"Rating set to {rating} stars for recipe '{slug}'",
+                "data": result
+            }, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def get_user_ratings() -> str:
+    """Get all ratings for the current user.
+
+    Returns:
+        JSON string with list of rated recipes and their ratings
+    """
+    try:
+        with MealieClient() as client:
+            ratings_data = client.get_user_ratings()
+
+            # Extract relevant fields for readability
+            result = {
+                "success": True,
+                "ratings": ratings_data
+            }
+
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def get_recipe_rating(recipe_id: str) -> str:
+    """Get rating for a specific recipe.
+
+    Args:
+        recipe_id: Recipe ID (UUID)
+
+    Returns:
+        JSON string with recipe rating data
+    """
+    try:
+        with MealieClient() as client:
+            rating_data = client.get_recipe_rating(recipe_id)
+
+            result = {
+                "success": True,
+                "rating": rating_data
+            }
+
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_shared_list(recipe_id: Optional[str] = None) -> str:
+    """List all shared recipe links.
+
+    Args:
+        recipe_id: Optional recipe ID to filter by (UUID)
+
+    Returns:
+        JSON string with list of shared recipe links
+    """
+    try:
+        with MealieClient() as client:
+            shared_recipes = client.list_shared_recipes(recipe_id)
+
+            result = {
+                "success": True,
+                "count": len(shared_recipes) if isinstance(shared_recipes, list) else 0,
+                "shared_recipes": shared_recipes
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_shared_create(recipe_id: str, expires_at: Optional[str] = None) -> str:
+    """Create a share link for a recipe.
+
+    Args:
+        recipe_id: Recipe ID to share (UUID)
+        expires_at: Optional expiration datetime (ISO 8601 format)
+
+    Returns:
+        JSON string with created share link data including token
+    """
+    try:
+        with MealieClient() as client:
+            share_data = client.create_shared_recipe(recipe_id, expires_at)
+
+            result = {
+                "success": True,
+                "message": f"Share link created for recipe {recipe_id}",
+                "share": share_data
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_shared_get(item_id: str) -> str:
+    """Get details of a shared recipe by ID.
+
+    Args:
+        item_id: Share link ID (UUID)
+
+    Returns:
+        JSON string with shared recipe link details
+    """
+    try:
+        with MealieClient() as client:
+            share_data = client.get_shared_recipe(item_id)
+
+            result = {
+                "success": True,
+                "share": share_data
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_shared_delete(item_id: str) -> str:
+    """Delete a share link.
+
+    Args:
+        item_id: Share link ID (UUID)
+
+    Returns:
+        JSON string confirming deletion
+    """
+    try:
+        with MealieClient() as client:
+            client.delete_shared_recipe(item_id)
+
+            result = {
+                "success": True,
+                "message": f"Share link {item_id} deleted"
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
+def recipes_shared_access(token_id: str) -> str:
+    """Access a shared recipe by token (public endpoint).
+
+    Args:
+        token_id: Share token ID (UUID)
+
+    Returns:
+        JSON string with recipe data from shared link
+    """
+    try:
+        with MealieClient() as client:
+            recipe_data = client.access_shared_recipe(token_id)
+
+            result = {
+                "success": True,
+                "recipe": {
+                    "name": recipe_data.get("name"),
+                    "slug": recipe_data.get("slug"),
+                    "description": recipe_data.get("description"),
+                    "rating": recipe_data.get("rating"),
+                    "tags": [tag.get("name") for tag in recipe_data.get("tags", [])],
+                    "categories": [cat.get("name") for cat in recipe_data.get("recipeCategory", [])],
+                    "ingredients": recipe_data.get("recipeIngredient", []),
+                    "instructions": recipe_data.get("recipeInstructions", [])
+                }
+            }
+            return json.dumps(result, indent=2)
+
+    except MealieAPIError as e:
+        error_result = {
+            "error": str(e),
+            "status_code": e.status_code,
+            "response_body": e.response_body
+        }
+        return json.dumps(error_result, indent=2)
+    except Exception as e:
+        error_result = {
+            "error": f"Unexpected error: {str(e)}"
+        }
+        return json.dumps(error_result, indent=2)
+
+
 if __name__ == "__main__":
     """
     Test the recipe tools against the live Mealie instance.

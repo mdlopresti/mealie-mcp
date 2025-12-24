@@ -1412,6 +1412,166 @@ class MealieClient:
         """Delete a tool."""
         return self.delete(f"/api/organizers/tools/{tool_id}")
 
+    # -------------------------------------------------------------------------
+    # Recipe Ratings Management
+    # -------------------------------------------------------------------------
+
+    def set_recipe_rating(self, slug: str, rating: float, is_favorite: Optional[bool] = None) -> Dict[str, Any]:
+        """
+        Set rating for a recipe (1-5 stars).
+
+        Args:
+            slug: Recipe slug identifier
+            rating: Rating value (1-5 stars, or None to clear)
+            is_favorite: Optional flag to mark as favorite
+
+        Returns:
+            Updated rating data
+
+        Raises:
+            MealieAPIError: If rating update fails
+        """
+        # Get user ID first
+        user = self.get("/api/users/self")
+        user_id = user["id"]
+
+        # Build payload
+        payload = {"rating": rating}
+        if is_favorite is not None:
+            payload["isFavorite"] = is_favorite
+
+        return self.post(f"/api/users/{user_id}/ratings/{slug}", json=payload)
+
+    def get_user_ratings(self) -> Dict[str, Any]:
+        """
+        Get all ratings for current user.
+
+        Returns:
+            User ratings data with rated recipes
+
+        Raises:
+            MealieAPIError: If fetching ratings fails
+        """
+        return self.get("/api/users/self/ratings")
+
+    def get_recipe_rating(self, recipe_id: str) -> Dict[str, Any]:
+        """
+        Get rating for a specific recipe.
+
+        Args:
+            recipe_id: Recipe ID (UUID)
+
+        Returns:
+            Recipe rating data
+
+        Raises:
+            MealieAPIError: If fetching rating fails
+        """
+        return self.get(f"/api/users/self/ratings/{recipe_id}")
+
+    def list_shared_recipes(self, recipe_id: Optional[str] = None) -> list[Dict[str, Any]]:
+        """
+        List all shared recipe links.
+
+        Args:
+            recipe_id: Optional recipe ID to filter by (UUID)
+
+        Returns:
+            List of shared recipe link data
+
+        Raises:
+            MealieAPIError: If fetching shared recipes fails
+        """
+        params = {}
+        if recipe_id is not None:
+            params["recipe_id"] = recipe_id
+        return self.get("/api/shared/recipes", params=params)
+
+    def create_shared_recipe(
+        self,
+        recipe_id: str,
+        expires_at: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a share link for a recipe.
+
+        Args:
+            recipe_id: Recipe ID to share (UUID)
+            expires_at: Optional expiration datetime (ISO 8601 format)
+
+        Returns:
+            Created share link data with token
+
+        Raises:
+            MealieAPIError: If creating share link fails
+        """
+        payload = {"recipeId": recipe_id}
+        if expires_at is not None:
+            payload["expiresAt"] = expires_at
+        return self.post("/api/shared/recipes", json=payload)
+
+    def get_shared_recipe(self, item_id: str) -> Dict[str, Any]:
+        """
+        Get details of a shared recipe by ID.
+
+        Args:
+            item_id: Share link ID (UUID)
+
+        Returns:
+            Shared recipe link data
+
+        Raises:
+            MealieAPIError: If fetching shared recipe fails
+        """
+        return self.get(f"/api/shared/recipes/{item_id}")
+
+    def delete_shared_recipe(self, item_id: str) -> None:
+        """
+        Delete a share link.
+
+        Args:
+            item_id: Share link ID (UUID)
+
+        Raises:
+            MealieAPIError: If deleting share link fails
+        """
+        self.delete(f"/api/shared/recipes/{item_id}")
+
+    def access_shared_recipe(self, token_id: str) -> Dict[str, Any]:
+        """
+        Access a shared recipe by token (public endpoint).
+
+        Args:
+            token_id: Share token ID (UUID)
+
+        Returns:
+            Recipe data from shared link
+
+        Raises:
+            MealieAPIError: If accessing shared recipe fails
+        """
+        return self.get(f"/api/recipes/shared/{token_id}")
+
+    # -------------------------------------------------------------------------
+    # Recipe Suggestions
+    # -------------------------------------------------------------------------
+
+    def get_recipe_suggestions(self, limit: int = 10) -> list[Dict[str, Any]]:
+        """
+        Get recipe suggestions based on preferences and history.
+
+        Args:
+            limit: Maximum number of suggestions to return (default 10)
+
+        Returns:
+            List of suggested recipe objects
+
+        Raises:
+            MealieAPIError: If request fails
+        """
+        params = {"limit": limit}
+        return self.get("/api/recipes/suggestions", params=params)
+
 
 if __name__ == "__main__":
     """

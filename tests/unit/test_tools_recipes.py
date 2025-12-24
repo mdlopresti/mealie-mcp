@@ -11,7 +11,8 @@ from src.tools.recipes import (
     recipes_search,
     recipes_get,
     recipes_list,
-    _slugify
+    _slugify,
+    get_recipe_suggestions,
 )
 from tests.unit.builders import build_recipe, build_tag, build_category
 
@@ -432,3 +433,117 @@ class TestRecipesList:
             assert result_dict["per_page"] == 10
             assert result_dict["total"] == 47
             assert result_dict["total_pages"] == 5
+import json
+import pytest
+from unittest.mock import Mock, patch
+from src.tools.recipes import get_recipe_suggestions
+from src.client import MealieAPIError
+from tests.unit.builders import build_recipe
+
+
+class TestGetRecipeSuggestions:
+    """Tests for get_recipe_suggestions function."""
+
+    def test_get_suggestions_with_default_limit(self):
+        """Test getting suggestions with default limit."""
+        mock_client = Mock()
+        mock_client.get_recipe_suggestions.return_value = [
+            build_recipe(name="Pasta Carbonara", slug="pasta-carbonara", rating=4.5),
+            build_recipe(name="Chicken Parmesan", slug="chicken-parmesan", rating=4.0),
+        ]
+
+        with patch('src.tools.recipes.MealieClient') as MockClient:
+            MockClient.return_value.__enter__.return_value = mock_client
+
+            result = get_recipe_suggestions()
+            result_dict = json.loads(result)
+
+            assert result_dict["count"] == 2
+            assert len(result_dict["suggestions"]) == 2
+            assert result_dict["suggestions"][0]["name"] == "Pasta Carbonara"
+
+            # Verify API call with default limit
+            mock_client.get_recipe_suggestions.assert_called_once_with(limit=10)
+
+    def test_get_suggestions_with_custom_limit(self):
+        """Test getting suggestions with custom limit."""
+        mock_client = Mock()
+        mock_client.get_recipe_suggestions.return_value = [
+            build_recipe(name="Recipe 1", slug="recipe-1"),
+            build_recipe(name="Recipe 2", slug="recipe-2"),
+            build_recipe(name="Recipe 3", slug="recipe-3"),
+        ]
+
+        with patch('src.tools.recipes.MealieClient') as MockClient:
+            MockClient.return_value.__enter__.return_value = mock_client
+
+            result = get_recipe_suggestions(limit=3)
+            result_dict = json.loads(result)
+
+            assert result_dict["count"] == 3
+            assert len(result_dict["suggestions"]) == 3
+
+            # Verify API call with custom limit
+            mock_client.get_recipe_suggestions.assert_called_once_with(limit=3)
+
+    def test_get_suggestions_empty_response(self):
+        """Test getting suggestions when no suggestions are available."""
+        mock_client = Mock()
+        mock_client.get_recipe_suggestions.return_value = []
+
+        with patch('src.tools.recipes.MealieClient') as MockClient:
+            MockClient.return_value.__enter__.return_value = mock_client
+
+            result = get_recipe_suggestions()
+            result_dict = json.loads(result)
+
+            assert result_dict["count"] == 0
+            assert result_dict["suggestions"] == []
+
+    def test_get_suggestions_with_api_error(self):
+        """Test handling API error when getting suggestions."""
+        mock_client = Mock()
+        mock_client.get_recipe_suggestions.side_effect = MealieAPIError(
+            "API error",
+            status_code=500,
+            response_body="Internal server error"
+        )
+
+        with patch('src.tools.recipes.MealieClient') as MockClient:
+            MockClient.return_value.__enter__.return_value = mock_client
+
+            result = get_recipe_suggestions()
+            result_dict = json.loads(result)
+
+            assert "error" in result_dict
+            assert result_dict["status_code"] == 500
+
+    def test_get_suggestions_with_connection_error(self):
+        """Test handling connection error when getting suggestions."""
+        mock_client = Mock()
+        mock_client.get_recipe_suggestions.side_effect = Exception("Connection timeout")
+
+        with patch('src.tools.recipes.MealieClient') as MockClient:
+            MockClient.return_value.__enter__.return_value = mock_client
+
+            result = get_recipe_suggestions()
+            result_dict = json.loads(result)
+
+            assert "error" in result_dict
+            assert "Connection timeout" in result_dict["error"]
+
+    def test_get_suggestions_non_list_response(self):
+        """Test handling non-list response from API (edge case)."""
+        mock_client = Mock()
+        # API returns a dict instead of a list (edge case)
+        mock_client.get_recipe_suggestions.return_value = {"message": "No suggestions"}
+
+        with patch('src.tools.recipes.MealieClient') as MockClient:
+            MockClient.return_value.__enter__.return_value = mock_client
+
+            result = get_recipe_suggestions()
+            result_dict = json.loads(result)
+
+            # count should be 0 for non-list responses
+            assert result_dict["count"] == 0
+            assert result_dict["suggestions"] == {"message": "No suggestions"}

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added recipe suggestions with 1 new MCP tool (Phase 1.3)
+- Added `mealie_recipes_get_suggestions` tool to get personalized recipe suggestions based on user preferences and history
+- Added `get_recipe_suggestions` method to MealieClient for fetching AI-powered recipe recommendations
+- Added support for limiting the number of suggestions returned (default 10)
+- Added 6 comprehensive unit tests for recipe suggestions
+- Added 1 E2E test for recipe suggestions workflow
+- Added 3 MCP tests for recipe suggestions tool registration and invocation
+
 ## [1.8.0] - 2025-12-23
 
 ### Added

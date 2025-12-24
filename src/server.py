@@ -39,6 +39,9 @@ from tools.recipes import (
     recipes_bulk_update_settings,
     recipes_create_from_image,
     recipes_upload_image_from_url,
+    set_recipe_rating,
+    get_user_ratings,
+    get_recipe_rating,
 )
 from tools.timeline import (
     timeline_list,
@@ -536,6 +539,62 @@ def mealie_recipes_upload_image_from_url(slug: str, image_url: str) -> str:
         )
     """
     return recipes_upload_image_from_url(slug=slug, image_url=image_url)
+
+
+@mcp.tool()
+def mealie_recipes_set_rating(slug: str, rating: float, is_favorite: bool | None = None) -> str:
+    """Set a rating (1-5 stars) for a recipe.
+
+    Allows users to rate recipes on a 1-5 star scale. Ratings help track favorite recipes
+    and inform meal planning decisions.
+
+    Args:
+        slug: Recipe slug identifier
+        rating: Rating value (0-5 stars, can be decimal like 4.5). Use 0 to clear rating.
+        is_favorite: Optional flag to mark as favorite (default: None)
+
+    Returns:
+        JSON string with updated rating data
+
+    Example:
+        mealie_recipes_set_rating(slug="chicken-parmesan", rating=5.0)
+        mealie_recipes_set_rating(slug="chicken-parmesan", rating=4.5, is_favorite=True)
+    """
+    return set_recipe_rating(slug=slug, rating=rating, is_favorite=is_favorite)
+
+
+@mcp.tool()
+def mealie_recipes_get_ratings() -> str:
+    """Get all ratings for the current user.
+
+    Returns a list of all recipes the user has rated, including the rating value
+    and favorite status for each recipe.
+
+    Returns:
+        JSON string with list of rated recipes and their ratings
+
+    Example:
+        mealie_recipes_get_ratings()
+    """
+    return get_user_ratings()
+
+
+@mcp.tool()
+def mealie_recipes_get_rating(recipe_id: str) -> str:
+    """Get rating for a specific recipe.
+
+    Retrieves the current user's rating for a specific recipe by its ID.
+
+    Args:
+        recipe_id: Recipe ID (UUID)
+
+    Returns:
+        JSON string with recipe rating data
+
+    Example:
+        mealie_recipes_get_rating(recipe_id="550e8400-e29b-41d4-a716-446655440000")
+    """
+    return get_recipe_rating(recipe_id=recipe_id)
 
 
 # -----------------------------------------------------------------------------
