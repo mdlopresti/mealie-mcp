@@ -132,6 +132,14 @@ from tools.comments import (
     comments_update,
     comments_delete,
 )
+from tools.webhooks import (
+    webhooks_list,
+    webhooks_create,
+    webhooks_get,
+    webhooks_update,
+    webhooks_delete,
+    webhooks_test,
+)
 from tools.notifications import (
     notifications_list,
     notifications_create,
