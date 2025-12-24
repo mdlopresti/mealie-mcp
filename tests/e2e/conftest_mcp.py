@@ -90,7 +90,8 @@ def mcp_client(mcp_server_process: subprocess.Popen) -> Dict[str, Any]:
     Provide an MCP client interface for sending/receiving protocol messages.
 
     This fixture provides helper methods for interacting with the MCP server
-    via JSON-RPC over stdin/stdout.
+    via JSON-RPC over stdin/stdout. It performs the MCP initialization handshake
+    automatically.
 
     Args:
         mcp_server_process: Running MCP server process
@@ -100,6 +101,7 @@ def mcp_client(mcp_server_process: subprocess.Popen) -> Dict[str, Any]:
         - send(method, params): Send MCP request
         - receive(): Read MCP response
         - call(method, params): Send request and wait for response
+        - server_info: Server capabilities and info from initialization
     """
 
     def send_message(method: str, params: Optional[Dict[str, Any]] = None) -> int:
@@ -129,6 +131,24 @@ def mcp_client(mcp_server_process: subprocess.Popen) -> Dict[str, Any]:
         mcp_server_process.stdin.flush()
 
         return request_id
+
+    def send_notification(method: str, params: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Send JSON-RPC notification to MCP server (no response expected).
+
+        Args:
+            method: MCP method name
+            params: Method parameters
+        """
+        message = {
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params or {}
+        }
+
+        logger.debug(f"Sending MCP notification: {method}")
+        mcp_server_process.stdin.write(json.dumps(message) + "\n")
+        mcp_server_process.stdin.flush()
 
     def receive_message() -> Dict[str, Any]:
         """
@@ -175,11 +195,40 @@ def mcp_client(mcp_server_process: subprocess.Popen) -> Dict[str, Any]:
 
         raise RuntimeError(f"No response received for request {request_id}")
 
+    # Perform MCP initialization handshake
+    logger.info("Performing MCP initialization handshake...")
+
+    # Step 1: Send initialize request
+    init_result = call_method("initialize", {
+        "protocolVersion": "2024-11-05",
+        "capabilities": {
+            "roots": {"listChanged": True},
+            "sampling": {}
+        },
+        "clientInfo": {
+            "name": "mealie-mcp-test-client",
+            "version": "1.0.0"
+        }
+    })
+
+    logger.info(f"Server capabilities: {init_result.get('capabilities', {})}")
+    logger.info(f"Server info: {init_result.get('serverInfo', {})}")
+
+    # Step 2: Send initialized notification
+    send_notification("notifications/initialized")
+
+    # Wait a moment for any server responses
+    time.sleep(0.5)
+
+    logger.info("MCP initialization handshake complete")
+
     return {
         "send": send_message,
+        "send_notification": send_notification,
         "receive": receive_message,
         "call": call_method,
-        "process": mcp_server_process
+        "process": mcp_server_process,
+        "server_info": init_result
     }
 
 
@@ -231,15 +280,17 @@ def mcp_tools_list(mcp_client: Dict[str, Any]) -> list[Dict[str, Any]]:
         mcp_client: MCP client interface
 
     Returns:
-        List of tool definitions
+        List of tool definitions with name, description, and inputSchema
     """
-    # Note: This might need adjustment based on FastMCP's protocol implementation
-    # The exact method name may differ (tools/list, listTools, etc.)
+    logger.info("Fetching MCP tools list...")
 
-    # For now, return empty list as placeholder
-    # This would need to be implemented based on actual MCP protocol
-    logger.warning("mcp_tools_list fixture is a placeholder - implement based on MCP protocol")
-    return []
+    # Call tools/list method
+    result = mcp_client["call"]("tools/list", {})
+
+    tools = result.get("tools", [])
+    logger.info(f"Found {len(tools)} MCP tools")
+
+    return tools
 
 
 @pytest.fixture
@@ -259,14 +310,14 @@ def mcp_resource_reader(mcp_client: Dict[str, Any]) -> callable:
         Read an MCP resource.
 
         Args:
-            uri: Resource URI (e.g., "mealie://recipes/test-recipe")
+            uri: Resource URI (e.g., "recipes://list")
 
         Returns:
             Resource content
 
         Example:
-            >>> recipe = read_resource("mealie://recipes/test-recipe")
-            >>> assert recipe["name"] == "Test Recipe"
+            >>> recipes = read_resource("recipes://list")
+            >>> assert "recipes" in recipes
         """
         params = {
             "uri": uri
@@ -275,3 +326,27 @@ def mcp_resource_reader(mcp_client: Dict[str, Any]) -> callable:
         return mcp_client["call"]("resources/read", params)
 
     return read_resource
+
+
+@pytest.fixture(scope="session")
+def mcp_resources_list(mcp_client: Dict[str, Any]) -> list[Dict[str, Any]]:
+    """
+    Get list of all available MCP resources.
+
+    Useful for validating that all expected resources are registered.
+
+    Args:
+        mcp_client: MCP client interface
+
+    Returns:
+        List of resource definitions with uri, name, description, and mimeType
+    """
+    logger.info("Fetching MCP resources list...")
+
+    # Call resources/list method
+    result = mcp_client["call"]("resources/list", {})
+
+    resources = result.get("resources", [])
+    logger.info(f"Found {len(resources)} MCP resources")
+
+    return resources

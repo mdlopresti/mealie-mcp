@@ -6,6 +6,7 @@ Provides fixtures for real Mealie client, test data cleanup, and unique identifi
 Note: This file contains fixtures for testing against a live Mealie instance.
       For Docker-based E2E testing with containerized Mealie instances,
       see conftest_docker.py which provides docker_mealie_client and related fixtures.
+      For MCP protocol testing, see conftest_mcp.py which provides MCP client fixtures.
 """
 
 import os
@@ -14,6 +15,10 @@ import pytest
 from typing import Generator
 from src.client import MealieClient
 from .helpers import generate_unique_id, cleanup_test_data
+
+# Import Docker and MCP fixtures to make them available to tests
+from .conftest_docker import *  # noqa: F401, F403
+from .conftest_mcp import *  # noqa: F401, F403
 
 logger = logging.getLogger(__name__)
 
