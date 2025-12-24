@@ -1316,6 +1316,231 @@ class MealieClient:
         return response.json()
 
     # -------------------------------------------------------------------------
+    # Event Notifications Management
+    # -------------------------------------------------------------------------
+
+    def list_notifications(self) -> list[Dict[str, Any]]:
+        """
+        List all event notifications.
+
+        Returns:
+            List of notification configurations
+        """
+        return self.get("/api/households/events/notifications")
+
+    def create_notification(
+        self,
+        name: str,
+        apprise_url: Optional[str] = None,
+        enabled: bool = True,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Create a new event notification.
+
+        Args:
+            name: Notification name
+            apprise_url: Optional Apprise notification URL
+            enabled: Whether the notification is enabled (default: True)
+            options: Optional notification options (event types to subscribe to)
+
+        Returns:
+            Created notification data
+        """
+        data: Dict[str, Any] = {"name": name, "enabled": enabled}
+        if apprise_url is not None:
+            data["appriseUrl"] = apprise_url
+        if options is not None:
+            data["options"] = options
+        return self.post("/api/households/events/notifications", json=data)
+
+    def get_notification(self, item_id: str) -> Dict[str, Any]:
+        """
+        Get a specific notification by ID.
+
+        Args:
+            item_id: Notification ID (UUID)
+
+        Returns:
+            Notification data
+        """
+        return self.get(f"/api/households/events/notifications/{item_id}")
+
+    def update_notification(
+        self,
+        item_id: str,
+        name: Optional[str] = None,
+        apprise_url: Optional[str] = None,
+        enabled: Optional[bool] = None,
+        options: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Update an existing notification.
+
+        Args:
+            item_id: Notification ID (UUID)
+            name: New notification name
+            apprise_url: New Apprise notification URL (use None to clear)
+            enabled: Whether the notification is enabled
+            options: New notification options (event types to subscribe to)
+
+        Returns:
+            Updated notification data
+        """
+        # Get current notification to preserve required fields
+        current = self.get_notification(item_id)
+
+        data: Dict[str, Any] = {
+            "id": item_id,
+            "name": name if name is not None else current.get("name"),
+            "groupId": current.get("groupId"),
+            "householdId": current.get("householdId"),
+        }
+
+        if apprise_url is not None:
+            data["appriseUrl"] = apprise_url
+        if enabled is not None:
+            data["enabled"] = enabled
+        if options is not None:
+            data["options"] = options
+
+        return self.put(f"/api/households/events/notifications/{item_id}", json=data)
+
+    def delete_notification(self, item_id: str) -> None:
+        """
+        Delete a notification.
+
+        Args:
+            item_id: Notification ID (UUID)
+        """
+        return self.delete(f"/api/households/events/notifications/{item_id}")
+
+    def test_notification(self, item_id: str) -> Dict[str, Any]:
+        """
+        Test a notification by sending a test message.
+
+        Args:
+            item_id: Notification ID (UUID)
+
+        Returns:
+            Test result data
+        """
+        return self.post(f"/api/households/events/notifications/{item_id}/test", json={})
+
+    # -------------------------------------------------------------------------
+    # Webhooks Management
+    # -------------------------------------------------------------------------
+
+    def list_webhooks(self) -> Dict[str, Any]:
+        """
+        List all webhooks.
+
+        Returns:
+            Paginated list of webhooks
+        """
+        return self.get("/api/households/webhooks")
+
+    def create_webhook(
+        self,
+        url: str,
+        scheduled_time: str,
+        enabled: bool = True,
+        name: Optional[str] = None,
+        webhook_type: str = "mealplan"
+    ) -> Dict[str, Any]:
+        """
+        Create a new webhook.
+
+        Args:
+            url: Webhook URL to send notifications to
+            scheduled_time: Time to trigger webhook in HH:MM:SS format
+            enabled: Whether the webhook is enabled (default: True)
+            name: Optional name for the webhook
+            webhook_type: Type of webhook - currently only "mealplan" is supported (default: "mealplan")
+
+        Returns:
+            Created webhook data
+        """
+        payload = {
+            "url": url,
+            "scheduledTime": scheduled_time,
+            "enabled": enabled,
+            "webhookType": webhook_type
+        }
+        if name is not None:
+            payload["name"] = name
+        return self.post("/api/households/webhooks", json=payload)
+
+    def get_webhook(self, item_id: str) -> Dict[str, Any]:
+        """
+        Get a specific webhook by ID.
+
+        Args:
+            item_id: Webhook ID (UUID)
+
+        Returns:
+            Webhook data
+        """
+        return self.get(f"/api/households/webhooks/{item_id}")
+
+    def update_webhook(
+        self,
+        item_id: str,
+        url: Optional[str] = None,
+        scheduled_time: Optional[str] = None,
+        enabled: Optional[bool] = None,
+        name: Optional[str] = None,
+        webhook_type: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Update a webhook.
+
+        Args:
+            item_id: Webhook ID (UUID)
+            url: New webhook URL
+            scheduled_time: New scheduled time in HH:MM:SS format
+            enabled: Whether the webhook is enabled
+            name: New name for the webhook
+            webhook_type: New webhook type (currently only "mealplan" is supported)
+
+        Returns:
+            Updated webhook data
+        """
+        payload = {}
+        if url is not None:
+            payload["url"] = url
+        if scheduled_time is not None:
+            payload["scheduledTime"] = scheduled_time
+        if enabled is not None:
+            payload["enabled"] = enabled
+        if name is not None:
+            payload["name"] = name
+        if webhook_type is not None:
+            payload["webhookType"] = webhook_type
+        return self.put(f"/api/households/webhooks/{item_id}", json=payload)
+
+    def delete_webhook(self, item_id: str) -> None:
+        """
+        Delete a webhook.
+
+        Args:
+            item_id: Webhook ID (UUID)
+        """
+        return self.delete(f"/api/households/webhooks/{item_id}")
+
+    def test_webhook(self, item_id: str) -> Dict[str, Any]:
+        """
+        Test a webhook by sending a test notification.
+
+        Args:
+            item_id: Webhook ID (UUID)
+
+        Returns:
+            Test result data
+        """
+        return self.post(f"/api/households/webhooks/{item_id}/test", json={})
+
+    # -------------------------------------------------------------------------
     # Organizers Management (Categories, Tags, Tools)
     # -------------------------------------------------------------------------
 
@@ -1518,6 +1743,146 @@ class MealieClient:
             MealieAPIError: If fetching rating fails
         """
         return self.get(f"/api/users/self/ratings/{recipe_id}")
+
+    # ============================================================================
+    # Recipe Actions
+    # ============================================================================
+
+    def list_recipe_actions(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        order_by: Optional[str] = None,
+        order_direction: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        List all recipe actions with pagination.
+
+        Args:
+            page: Page number (default: 1)
+            per_page: Number of actions per page (default: 50)
+            order_by: Field to order by
+            order_direction: "asc" or "desc"
+
+        Returns:
+            Paginated action data
+
+        Raises:
+            MealieAPIError: If listing actions fails
+        """
+        params = {"page": page, "perPage": per_page}
+        if order_by:
+            params["orderBy"] = order_by
+        if order_direction:
+            params["orderDirection"] = order_direction
+
+        return self.get("/api/households/recipe-actions", params=params)
+
+    def create_recipe_action(
+        self,
+        action_type: str,
+        title: str,
+        url: str
+    ) -> Dict[str, Any]:
+        """
+        Create a new recipe action.
+
+        Args:
+            action_type: Type of action - "link" or "post"
+            title: Display title for the action
+            url: URL for the action
+
+        Returns:
+            Created action data
+
+        Raises:
+            MealieAPIError: If creation fails
+        """
+        payload = {
+            "type": action_type,
+            "title": title,
+            "url": url
+        }
+        return self.post("/api/households/recipe-actions", json=payload)
+
+    def get_recipe_action(self, item_id: str) -> Dict[str, Any]:
+        """
+        Get a specific recipe action by ID.
+
+        Args:
+            item_id: Recipe action ID (UUID)
+
+        Returns:
+            Recipe action data
+
+        Raises:
+            MealieAPIError: If fetching action fails
+        """
+        return self.get(f"/api/households/recipe-actions/{item_id}")
+
+    def update_recipe_action(
+        self,
+        item_id: str,
+        action_type: Optional[str] = None,
+        title: Optional[str] = None,
+        url: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Update an existing recipe action.
+
+        Args:
+            item_id: Recipe action ID (UUID)
+            action_type: New action type
+            title: New title
+            url: New URL
+
+        Returns:
+            Updated action data
+
+        Raises:
+            MealieAPIError: If update fails
+        """
+        # Get current action to merge updates
+        current = self.get_recipe_action(item_id)
+
+        payload = {
+            "id": item_id,
+            "groupId": current["groupId"],
+            "householdId": current["householdId"],
+            "type": action_type if action_type is not None else current["type"],
+            "title": title if title is not None else current["title"],
+            "url": url if url is not None else current["url"]
+        }
+
+        return self.put(f"/api/households/recipe-actions/{item_id}", json=payload)
+
+    def delete_recipe_action(self, item_id: str) -> None:
+        """
+        Delete a recipe action.
+
+        Args:
+            item_id: Recipe action ID (UUID)
+
+        Raises:
+            MealieAPIError: If deletion fails
+        """
+        self.delete(f"/api/households/recipe-actions/{item_id}")
+
+    def trigger_recipe_action(self, item_id: str, recipe_slug: str) -> Dict[str, Any]:
+        """
+        Trigger a recipe action for a specific recipe.
+
+        Args:
+            item_id: Recipe action ID (UUID)
+            recipe_slug: Recipe slug identifier
+
+        Returns:
+            Trigger result data
+
+        Raises:
+            MealieAPIError: If trigger fails
+        """
+        return self.post(f"/api/households/recipe-actions/{item_id}/trigger/{recipe_slug}")
 
 
 if __name__ == "__main__":

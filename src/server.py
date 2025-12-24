@@ -132,6 +132,14 @@ from tools.comments import (
     comments_update,
     comments_delete,
 )
+from tools.notifications import (
+    notifications_list,
+    notifications_create,
+    notifications_get,
+    notifications_update,
+    notifications_delete,
+    notifications_test,
+)
 
 # Import resources
 from resources.recipes import get_recipes_list, get_recipe_detail
@@ -1951,6 +1959,201 @@ def mealie_timeline_update_image(event_id: str, image_url: str) -> str:
         )
     """
     return timeline_update_image(event_id=event_id, image_url=image_url)
+
+
+# =============================================================================
+# Webhooks Management (Batch 2 - Phase 2.1)
+# =============================================================================
+
+@mcp.tool()
+def mealie_webhooks_list() -> str:
+    """List all webhooks.
+
+    Webhooks enable automation by sending scheduled HTTP POST requests to external services.
+    The mealplan webhook sends today's meal plan data at a specified time each day.
+
+    Returns:
+        JSON string with list of webhooks including URL, schedule, and status
+
+    Example response:
+        {
+          "total": 2,
+          "webhooks": [
+            {
+              "id": "550e8400-...",
+              "name": "Morning Meal Plan",
+              "url": "https://example.com/webhook",
+              "enabled": true,
+              "webhook_type": "mealplan",
+              "scheduled_time": "09:00:00"
+            }
+          ]
+        }
+    """
+    return webhooks_list()
+
+
+@mcp.tool()
+def mealie_webhooks_create(
+    url: str,
+    scheduled_time: str,
+    enabled: bool = True,
+    name: str | None = None,
+    webhook_type: str = "mealplan"
+) -> str:
+    """Create a new webhook.
+
+    Webhooks send scheduled HTTP POST requests to external services. The mealplan webhook
+    sends today's meal plan data to the specified URL at the scheduled time each day.
+
+    Args:
+        url: Webhook URL to send notifications to (e.g., "https://example.com/webhook")
+        scheduled_time: Time to trigger webhook in HH:MM:SS format (e.g., "09:00:00")
+        enabled: Whether the webhook is enabled (default: True)
+        name: Optional name for the webhook
+        webhook_type: Type of webhook - currently only "mealplan" is supported (default: "mealplan")
+
+    Returns:
+        JSON string with created webhook data including ID
+
+    Examples:
+        # Create a webhook to send meal plans to external service
+        mealie_webhooks_create(
+            url="https://example.com/webhook",
+            scheduled_time="09:00:00",
+            name="Morning Meal Plan"
+        )
+
+        # Create a webhook for evening notifications
+        mealie_webhooks_create(
+            url="https://automation.example.com/api/mealplan",
+            scheduled_time="18:00:00",
+            enabled=True,
+            name="Evening Meal Reminder"
+        )
+    """
+    return webhooks_create(
+        url=url,
+        scheduled_time=scheduled_time,
+        enabled=enabled,
+        name=name,
+        webhook_type=webhook_type
+    )
+
+
+@mcp.tool()
+def mealie_webhooks_get(item_id: str) -> str:
+    """Get a specific webhook by ID.
+
+    Args:
+        item_id: Webhook ID (UUID)
+
+    Returns:
+        JSON string with webhook details including URL, schedule, and configuration
+
+    Example:
+        mealie_webhooks_get("550e8400-e29b-41d4-a716-446655440000")
+    """
+    return webhooks_get(item_id)
+
+
+@mcp.tool()
+def mealie_webhooks_update(
+    item_id: str,
+    url: str | None = None,
+    scheduled_time: str | None = None,
+    enabled: bool | None = None,
+    name: str | None = None,
+    webhook_type: str | None = None
+) -> str:
+    """Update an existing webhook.
+
+    Use this to change the webhook URL, scheduled time, or enable/disable it.
+
+    Args:
+        item_id: Webhook ID (UUID)
+        url: New webhook URL
+        scheduled_time: New scheduled time in HH:MM:SS format
+        enabled: Whether the webhook is enabled
+        name: New name for the webhook
+        webhook_type: New webhook type (currently only "mealplan" is supported)
+
+    Returns:
+        JSON string with updated webhook data
+
+    Examples:
+        # Disable a webhook temporarily
+        mealie_webhooks_update(
+            item_id="550e8400-...",
+            enabled=False
+        )
+
+        # Change scheduled time to 8 AM
+        mealie_webhooks_update(
+            item_id="550e8400-...",
+            scheduled_time="08:00:00"
+        )
+
+        # Update webhook URL
+        mealie_webhooks_update(
+            item_id="550e8400-...",
+            url="https://new-service.example.com/webhook"
+        )
+    """
+    return webhooks_update(
+        item_id=item_id,
+        url=url,
+        scheduled_time=scheduled_time,
+        enabled=enabled,
+        name=name,
+        webhook_type=webhook_type
+    )
+
+
+@mcp.tool()
+def mealie_webhooks_delete(item_id: str) -> str:
+    """Delete a webhook.
+
+    This permanently removes the webhook configuration and stops all scheduled notifications.
+
+    Args:
+        item_id: Webhook ID (UUID)
+
+    Returns:
+        JSON string confirming deletion
+
+    Example:
+        mealie_webhooks_delete("550e8400-e29b-41d4-a716-446655440000")
+    """
+    return webhooks_delete(item_id)
+
+
+@mcp.tool()
+def mealie_webhooks_test(item_id: str) -> str:
+    """Test a webhook by sending a test notification.
+
+    This will immediately send a test HTTP POST request to the configured webhook URL
+    to verify the webhook is working correctly. The test payload will contain today's
+    meal plan data (for mealplan webhooks).
+
+    Args:
+        item_id: Webhook ID (UUID)
+
+    Returns:
+        JSON string with test result
+
+    Example:
+        # Test a webhook to ensure the external service receives it
+        mealie_webhooks_test("550e8400-e29b-41d4-a716-446655440000")
+
+        # Expected response:
+        # {
+        #   "success": true,
+        #   "message": "Test webhook request sent successfully",
+        #   "webhook_id": "550e8400-..."
+        # }
+    """
+    return webhooks_test(item_id)
 
 
 # =============================================================================
