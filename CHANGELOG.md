@@ -8,6 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added event notifications management with 6 new MCP tools (Batch 2 - Phase 2.3)
+- Added `mealie_notifications_list` tool to list all event notifications with pagination
+- Added `mealie_notifications_create` tool to create Apprise-based notifications for Mealie events
+- Added `mealie_notifications_get` tool to get notification details by ID
+- Added `mealie_notifications_update` tool to update notification configuration and event subscriptions
+- Added `mealie_notifications_delete` tool to delete event notifications
+- Added `mealie_notifications_test` tool to test notifications by sending test messages
+- Added `list_notifications`, `create_notification`, `get_notification`, `update_notification`, `delete_notification`, and `test_notification` methods to MealieClient
+- Added support for all Mealie event types: recipes, meal plans, shopping lists, cookbooks, tags, categories, labels, and data operations
+- Added comprehensive Apprise URL support for Discord, Slack, email, and other notification services
+- Added recipe actions management with 6 new MCP tools (Batch 2 - Phase 2.2)
+- Added `mealie_recipe_actions_list` tool to list all recipe actions with pagination
+- Added `mealie_recipe_actions_create` tool to create custom automation workflows (link/post types)
+- Added `mealie_recipe_actions_get` tool to get action details by ID
+- Added `mealie_recipe_actions_update` tool to update action configuration
+- Added `mealie_recipe_actions_delete` tool to delete recipe actions
+- Added `mealie_recipe_actions_trigger` tool to trigger actions for specific recipes
+- Added `list_recipe_actions`, `create_recipe_action`, `get_recipe_action`, `update_recipe_action`, `delete_recipe_action`, and `trigger_recipe_action` methods to MealieClient
+- Added comprehensive test coverage with 26 unit tests for recipe actions operations
 - Added recipe favorites management with 3 new MCP tools (Phase 1.2)
 - Added `mealie_recipes_add_favorite` tool to add recipes to favorites
 - Added `mealie_recipes_remove_favorite` tool to remove recipes from favorites
