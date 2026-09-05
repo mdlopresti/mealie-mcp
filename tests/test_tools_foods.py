@@ -346,6 +346,32 @@ class TestFoodsAdvanced:
 class TestFoodsFinalPush:
     """Final foods/units tests to reach coverage target."""
 
+    def test_foods_list_with_search(self):
+        """Test foods_list forwards the search term to the client."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.list_foods.return_value = {"items": [{"id": "f1", "name": "green onion"}]}
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            data = json.loads(foods_list(search="onion"))
+
+        assert data["items"][0]["name"] == "green onion"
+        mock_client.list_foods.assert_called_once_with(1, 50, search="onion")
+
+    def test_units_list_with_search(self):
+        """Test units_list forwards the search term to the client."""
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.list_units.return_value = {"items": [{"id": "u1", "name": "tablespoon"}]}
+
+        with patch('src.tools.foods.MealieClient', return_value=mock_client):
+            data = json.loads(units_list(page=2, per_page=10, search="table"))
+
+        assert data["items"][0]["name"] == "tablespoon"
+        mock_client.list_units.assert_called_once_with(2, 10, search="table")
+
     def test_foods_list_unexpected_error(self):
         """Test foods_list unexpected error."""
         mock_client = MagicMock()

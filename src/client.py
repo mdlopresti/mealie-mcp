@@ -965,9 +965,24 @@ class MealieClient:
     # Foods & Units Management
     # -------------------------------------------------------------------------
 
-    def list_foods(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
-        """List all foods with pagination."""
-        params = {"page": page, "perPage": per_page}
+    def list_foods(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        search: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """List foods with pagination and an optional name search.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of foods per page
+            search: Optional search string; Mealie matches it against the
+                name (case-insensitive substring), which makes it the quickest
+                way to find an existing food before adding an alias to it
+        """
+        params: Dict[str, Any] = {"page": page, "perPage": per_page}
+        if search:
+            params["search"] = search
         return self.get("/api/foods", params=params)
 
     def get_food(self, food_id: str) -> Dict[str, Any]:
@@ -1067,9 +1082,24 @@ class MealieClient:
         }
         return self.post("/api/foods/merge", json=payload)
 
-    def list_units(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
-        """List all units with pagination."""
-        params = {"page": page, "perPage": per_page}
+    def list_units(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        search: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """List units with pagination and an optional name search.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of units per page
+            search: Optional search string; Mealie matches it against the
+                name (case-insensitive substring), which makes it the quickest
+                way to find an existing unit before adding an alias to it
+        """
+        params: Dict[str, Any] = {"page": page, "perPage": per_page}
+        if search:
+            params["search"] = search
         return self.get("/api/units", params=params)
 
     def get_unit(self, unit_id: str) -> Dict[str, Any]:

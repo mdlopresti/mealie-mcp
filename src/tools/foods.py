@@ -25,19 +25,20 @@ except ImportError:
 # Foods Management
 # -----------------------------------------------------------------------------
 
-def foods_list(page: int = 1, per_page: int = 50) -> str:
-    """List all foods with pagination.
+def foods_list(page: int = 1, per_page: int = 50, search: Optional[str] = None) -> str:
+    """List foods with pagination and an optional name search.
 
     Args:
         page: Page number (1-indexed)
         per_page: Number of foods per page
+        search: Optional case-insensitive substring to match against the name
 
     Returns:
         JSON string with paginated food list
     """
     try:
         with MealieClient() as client:
-            result = client.list_foods(page, per_page)
+            result = client.list_foods(page, per_page, search=search)
             return json.dumps(result, indent=2)
 
     except MealieAPIError as e:
@@ -236,19 +237,20 @@ def foods_merge(from_food_id: str, to_food_id: str) -> str:
 # Units Management
 # -----------------------------------------------------------------------------
 
-def units_list(page: int = 1, per_page: int = 50) -> str:
-    """List all units with pagination.
+def units_list(page: int = 1, per_page: int = 50, search: Optional[str] = None) -> str:
+    """List units with pagination and an optional name search.
 
     Args:
         page: Page number (1-indexed)
         per_page: Number of units per page
+        search: Optional case-insensitive substring to match against the name
 
     Returns:
         JSON string with paginated unit list
     """
     try:
         with MealieClient() as client:
-            result = client.list_units(page, per_page)
+            result = client.list_units(page, per_page, search=search)
             return json.dumps(result, indent=2)
 
     except MealieAPIError as e:

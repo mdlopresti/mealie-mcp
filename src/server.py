@@ -365,7 +365,8 @@ def mealie_recipes_update(
 @mcp.tool()
 def mealie_recipes_update_structured_ingredients(
     slug: str,
-    parsed_ingredients: list[dict]
+    parsed_ingredients: list[dict],
+    create_missing_foods: bool = True
 ) -> str:
     """Update a recipe with structured ingredients from parser output.
 
@@ -382,9 +383,15 @@ def mealie_recipes_update_structured_ingredients(
             - food: string or dict with name (e.g., "flour" or {"name": "flour"})
             - note: optional string (e.g., "sifted")
             - display: optional string for human-readable format
+        create_missing_foods: When True (default), foods the parser did not match to
+            an existing food are created automatically. Set to False to have the tool
+            refuse the update and return the unmatched food names instead, so you can
+            alias them onto existing foods (mealie_foods_aliases_add), re-parse, and
+            retry without creating duplicates.
 
     Returns:
-        JSON string with updated recipe details
+        JSON string with updated recipe details, plus `created_foods` and
+        `created_units` (name -> id) for anything that was created
 
     Example workflow:
         1. Parse ingredients:
@@ -406,7 +413,8 @@ def mealie_recipes_update_structured_ingredients(
     """
     return recipes_update_structured_ingredients(
         slug=slug,
-        parsed_ingredients=parsed_ingredients
+        parsed_ingredients=parsed_ingredients,
+        create_missing_foods=create_missing_foods
     )
 
 
@@ -1276,17 +1284,20 @@ def mealie_shopping_delete_recipe_from_list(item_id: str, recipe_id: str) -> str
 # -----------------------------------------------------------------------------
 
 @mcp.tool()
-def mealie_foods_list(page: int = 1, per_page: int = 50) -> str:
-    """List all foods with pagination.
+def mealie_foods_list(page: int = 1, per_page: int = 50, search: str | None = None) -> str:
+    """List foods with pagination and an optional name search.
 
     Args:
         page: Page number (1-indexed)
         per_page: Number of foods per page
+        search: Optional case-insensitive substring to match against the
+            food name (e.g. "onion"). Use this to find an existing
+            food before adding an alias to it.
 
     Returns:
         JSON string with paginated food list
     """
-    return foods_list(page=page, per_page=per_page)
+    return foods_list(page=page, per_page=per_page, search=search)
 
 
 @mcp.tool()
@@ -1384,17 +1395,20 @@ def mealie_foods_merge(from_food_id: str, to_food_id: str) -> str:
 
 
 @mcp.tool()
-def mealie_units_list(page: int = 1, per_page: int = 50) -> str:
-    """List all units with pagination.
+def mealie_units_list(page: int = 1, per_page: int = 50, search: str | None = None) -> str:
+    """List units with pagination and an optional name search.
 
     Args:
         page: Page number (1-indexed)
         per_page: Number of units per page
+        search: Optional case-insensitive substring to match against the
+            unit name (e.g. "tablespoon"). Use this to find an existing
+            unit before adding an alias to it.
 
     Returns:
         JSON string with paginated unit list
     """
-    return units_list(page=page, per_page=per_page)
+    return units_list(page=page, per_page=per_page, search=search)
 
 
 @mcp.tool()

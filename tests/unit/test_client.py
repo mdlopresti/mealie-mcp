@@ -785,6 +785,44 @@ class TestMealieClientFoodsAndUnits:
         assert route.called
 
     @respx.mock
+    def test_list_foods_with_search(self):
+        """Test list_foods sends the search query param."""
+        route = respx.get(
+            "https://test.example.com/api/foods",
+            params={"page": "1", "perPage": "50", "search": "onion"}
+        ).mock(return_value=Response(200, json={"items": [], "total": 0}))
+
+        client = MealieClient("https://test.example.com", "token")
+        client.list_foods(search="onion")
+
+        assert route.called
+
+    @respx.mock
+    def test_list_foods_without_search_omits_param(self):
+        """Test list_foods leaves the search param out when not given."""
+        route = respx.get("https://test.example.com/api/foods").mock(
+            return_value=Response(200, json={"items": [], "total": 0})
+        )
+
+        client = MealieClient("https://test.example.com", "token")
+        client.list_foods()
+
+        assert "search" not in str(route.calls[0].request.url)
+
+    @respx.mock
+    def test_list_units_with_search(self):
+        """Test list_units sends the search query param."""
+        route = respx.get(
+            "https://test.example.com/api/units",
+            params={"page": "1", "perPage": "50", "search": "tbsp"}
+        ).mock(return_value=Response(200, json={"items": [], "total": 0}))
+
+        client = MealieClient("https://test.example.com", "token")
+        client.list_units(search="tbsp")
+
+        assert route.called
+
+    @respx.mock
     def test_merge_foods(self):
         """Test merge_foods combines two foods."""
         respx.post("https://test.example.com/api/foods/merge").mock(
