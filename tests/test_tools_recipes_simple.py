@@ -599,6 +599,71 @@ class TestRecipesErrorHandling:
 class TestRecipesUpdateStructured:
     """Test recipes_update_structured_ingredients function."""
 
+    @staticmethod
+    def _client():
+        mock_client = MagicMock()
+        mock_client.__enter__ = MagicMock(return_value=mock_client)
+        mock_client.__exit__ = MagicMock(return_value=None)
+        mock_client.update_recipe_ingredients.return_value = {
+            "id": "recipe-1", "slug": "test-recipe", "name": "Test Recipe"
+        }
+        return mock_client
+
+    def test_unmatched_food_is_created_by_default(self):
+        """A food with no id is created and reported when create_missing_foods is True."""
+        from src.tools.recipes import recipes_update_structured_ingredients
+
+        mock_client = self._client()
+        mock_client.create_food.return_value = {"id": "food-new", "name": "scallions"}
+
+        parsed = [{"ingredient": {"quantity": 2, "food": {"name": "scallions"}}}]
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            data = json.loads(recipes_update_structured_ingredients("test-recipe", parsed))
+
+        assert data["success"] is True
+        assert data["created_foods"] == {"scallions": "food-new"}
+        mock_client.create_food.assert_called_once_with("scallions")
+        sent = mock_client.update_recipe_ingredients.call_args[0][1]
+        assert sent[0]["food"] == {"id": "food-new", "name": "scallions"}
+
+    def test_unmatched_food_blocks_update_when_flag_is_off(self):
+        """With create_missing_foods=False the recipe is untouched and names are returned."""
+        from src.tools.recipes import recipes_update_structured_ingredients
+
+        mock_client = self._client()
+        parsed = [
+            {"ingredient": {"quantity": 2, "food": {"name": "scallions"}}},
+            {"ingredient": {"quantity": 1, "food": {"id": "food-1", "name": "garlic"}}},
+            {"ingredient": {"quantity": 1, "food": "shallots"}},
+            {"ingredient": {"quantity": 3, "food": {"name": "scallions"}}},
+        ]
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            data = json.loads(recipes_update_structured_ingredients(
+                "test-recipe", parsed, create_missing_foods=False
+            ))
+
+        assert "error" in data
+        assert data["unmatched_foods"] == ["scallions", "shallots"]
+        assert "mealie_foods_aliases_add" in data["hint"]
+        mock_client.create_food.assert_not_called()
+        mock_client.update_recipe_ingredients.assert_not_called()
+
+    def test_all_foods_matched_updates_with_flag_off(self):
+        """When every food already has an id, create_missing_foods=False still updates."""
+        from src.tools.recipes import recipes_update_structured_ingredients
+
+        mock_client = self._client()
+        parsed = [{"ingredient": {"quantity": 1, "food": {"id": "food-1", "name": "garlic"}}}]
+        with patch('src.tools.recipes.MealieClient', return_value=mock_client):
+            data = json.loads(recipes_update_structured_ingredients(
+                "test-recipe", parsed, create_missing_foods=False
+            ))
+
+        assert data["success"] is True
+        assert data["created_foods"] == {}
+        mock_client.create_food.assert_not_called()
+        mock_client.update_recipe_ingredients.assert_called_once()
+
     def test_update_structured_basic(self):
         """Test updating recipe with structured ingredients."""
         from src.tools.recipes import recipes_update_structured_ingredients

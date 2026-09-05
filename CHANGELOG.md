@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added ingredient alias management with 6 new MCP tools
+- Added `mealie_foods_aliases_list` tool to list the aliases registered for a food
+- Added `mealie_foods_aliases_add` tool to add aliases to a food while keeping existing ones
+- Added `mealie_foods_aliases_remove` tool to remove aliases from a food
+- Added `mealie_units_aliases_list` tool to list the aliases registered for a unit
+- Added `mealie_units_aliases_add` tool to add aliases to a unit while keeping existing ones
+- Added `mealie_units_aliases_remove` tool to remove aliases from a unit
+- Added `get_food_aliases`, `add_food_aliases`, `remove_food_aliases`, `get_unit_aliases`, `add_unit_aliases`, and `remove_unit_aliases` methods to MealieClient
+- Added an optional `aliases` parameter to `mealie_foods_create`, `mealie_foods_update`, `mealie_units_create` and `mealie_units_update` (replaces the full alias set)
+- Added `normalize_aliases` and `alias_names` helpers that accept plain strings, trim whitespace, and de-duplicate case-insensitively
+- Added an optional `search` parameter to `mealie_foods_list` and `mealie_units_list` (and to `list_foods` / `list_units` on MealieClient) to find an existing food or unit by name before aliasing it
+- Added a `create_missing_foods` flag to `mealie_recipes_update_structured_ingredients`; when False, unmatched foods are returned instead of being created and the recipe is left untouched
+- Added `created_foods` and `created_units` to the `mealie_recipes_update_structured_ingredients` response
+- Added 40 unit tests covering alias normalization, client read-modify-write behaviour (including that invalid input is rejected before any request is made), and the tool wrappers
+
 - Added event notifications management with 6 new MCP tools (Batch 2 - Phase 2.3)
 - Added `mealie_notifications_list` tool to list all event notifications with pagination
 - Added `mealie_notifications_create` tool to create Apprise-based notifications for Mealie events
@@ -52,6 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `list_shared_recipes`, `create_shared_recipe`, `get_shared_recipe`, `delete_shared_recipe`, and `access_shared_recipe` methods to MealieClient
 - Added comprehensive test coverage with 20 unit tests for shared recipe operations
 - Added support for optional expiration dates when creating share links
+
+### Fixed
+- Fixed `update_unit` sending a partial `PATCH` to `/api/units/{id}`, which the Mealie API does not implement; it now fetches the unit and `PUT`s the merged object, so fields that are not passed are no longer dropped
 
 ## [1.8.0] - 2025-12-23
 

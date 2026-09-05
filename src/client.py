@@ -15,6 +15,77 @@ import httpx
 from dotenv import load_dotenv
 
 
+def normalize_aliases(aliases: Optional[list]) -> list[Dict[str, str]]:
+    """Normalize an alias list into Mealie's ``[{"name": ...}]`` payload shape.
+
+    Mealie stores aliases on the food/unit object itself as a list of objects
+    with a single ``name`` field. Accepting bare strings keeps the tool layer
+    ergonomic while still producing a valid payload.
+
+    Args:
+        aliases: List of alias names (strings) and/or ``{"name": ...}`` dicts
+
+    Returns:
+        List of alias dicts, whitespace-trimmed and de-duplicated
+        case-insensitively while preserving the original order and casing
+
+    Raises:
+        ValueError: If an entry is neither a string nor a dict with a name
+    """
+    if not aliases:
+        return []
+
+    normalized: list[Dict[str, str]] = []
+    seen: set[str] = set()
+
+    for alias in aliases:
+        if isinstance(alias, str):
+            name = alias.strip()
+        elif isinstance(alias, dict):
+            name = str(alias.get("name", "")).strip()
+        else:
+            raise ValueError(
+                f"Alias must be a string or a dict with a 'name' key, got {type(alias).__name__}"
+            )
+
+        if not name:
+            raise ValueError("Alias names cannot be empty")
+
+        key = name.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append({"name": name})
+
+    return normalized
+
+
+def alias_names(item: Dict[str, Any]) -> list[str]:
+    """Extract plain alias names from a food or unit object."""
+    return [
+        alias["name"]
+        for alias in (item.get("aliases") or [])
+        if isinstance(alias, dict) and alias.get("name")
+    ]
+
+
+def _merge_aliases(existing: list[str], to_add: list[Dict[str, str]]) -> list[Dict[str, str]]:
+    """Append normalized aliases to ``existing`` names, skipping case-insensitive duplicates."""
+    seen = {name.casefold() for name in existing}
+    merged = [{"name": name} for name in existing]
+    for alias in to_add:
+        if alias["name"].casefold() not in seen:
+            seen.add(alias["name"].casefold())
+            merged.append(alias)
+    return merged
+
+
+def _drop_aliases(existing: list[str], to_remove: list[Dict[str, str]]) -> list[Dict[str, str]]:
+    """Drop normalized aliases from ``existing`` names, matching case-insensitively."""
+    drop = {alias["name"].casefold() for alias in to_remove}
+    return [{"name": name} for name in existing if name.casefold() not in drop]
+
+
 # Error message templates for common status codes
 _ERROR_TEMPLATES = {
     422: {
@@ -526,7 +597,8 @@ class MealieClient:
         self,
         name: str,
         description: Optional[str] = None,
-        label_id: Optional[str] = None
+        label_id: Optional[str] = None,
+        aliases: Optional[list] = None
     ) -> Dict[str, Any]:
         """
         Create a new food item.
@@ -535,6 +607,8 @@ class MealieClient:
             name: The food name
             description: Optional description
             label_id: Optional label ID (UUID) to assign
+            aliases: Optional alternate names the ingredient parser should
+                recognize for this food (e.g. ["scallions"] for "green onion")
 
         Returns:
             Created food data with id
@@ -547,13 +621,16 @@ class MealieClient:
             payload["description"] = description
         if label_id is not None:
             payload["labelId"] = label_id
+        if aliases is not None:
+            payload["aliases"] = normalize_aliases(aliases)
         return self.post("/api/foods", json=payload)
 
     def create_unit(
         self,
         name: str,
         description: Optional[str] = None,
-        abbreviation: Optional[str] = None
+        abbreviation: Optional[str] = None,
+        aliases: Optional[list] = None
     ) -> Dict[str, Any]:
         """
         Create a new measurement unit.
@@ -562,6 +639,8 @@ class MealieClient:
             name: The unit name
             description: Optional description
             abbreviation: Optional abbreviation (e.g., "tsp", "oz")
+            aliases: Optional alternate names the ingredient parser should
+                recognize for this unit (e.g. ["tblsp"] for "tablespoon")
 
         Returns:
             Created unit data with id
@@ -574,6 +653,8 @@ class MealieClient:
             payload["description"] = description
         if abbreviation is not None:
             payload["abbreviation"] = abbreviation
+        if aliases is not None:
+            payload["aliases"] = normalize_aliases(aliases)
         return self.post("/api/units", json=payload)
 
     def update_recipe_ingredients(self, slug: str, ingredients: list[Dict[str, Any]]) -> Dict[str, Any]:
@@ -884,9 +965,24 @@ class MealieClient:
     # Foods & Units Management
     # -------------------------------------------------------------------------
 
-    def list_foods(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
-        """List all foods with pagination."""
-        params = {"page": page, "perPage": per_page}
+    def list_foods(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        search: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """List foods with pagination and an optional name search.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of foods per page
+            search: Optional search string; Mealie matches it against the
+                name (case-insensitive substring), which makes it the quickest
+                way to find an existing food before adding an alias to it
+        """
+        params: Dict[str, Any] = {"page": page, "perPage": per_page}
+        if search:
+            params["search"] = search
         return self.get("/api/foods", params=params)
 
     def get_food(self, food_id: str) -> Dict[str, Any]:
@@ -898,7 +994,8 @@ class MealieClient:
         food_id: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        label_id: Optional[str] = None
+        label_id: Optional[str] = None,
+        aliases: Optional[list] = None
     ) -> Dict[str, Any]:
         """Update an existing food.
 
@@ -907,6 +1004,8 @@ class MealieClient:
             name: New name for the food
             description: New description
             label_id: New label ID (UUID) to assign to the food
+            aliases: Replacement alias list. Pass ``[]`` to clear all aliases,
+                or omit to leave the existing aliases untouched.
 
         Returns:
             Updated food object
@@ -915,6 +1014,9 @@ class MealieClient:
             The Mealie API requires PUT with the full food object.
             This method fetches the current food first, then updates it.
         """
+        # Validate input before making any request
+        new_aliases = normalize_aliases(aliases) if aliases is not None else None
+
         # GET current food to preserve all fields
         current_food = self.get(f"/api/foods/{food_id}")
 
@@ -925,8 +1027,47 @@ class MealieClient:
             current_food["description"] = description
         if label_id is not None:
             current_food["labelId"] = label_id
+        if new_aliases is not None:
+            current_food["aliases"] = new_aliases
 
         # PUT the complete updated object
+        return self.put(f"/api/foods/{food_id}", json=current_food)
+
+    def get_food_aliases(self, food_id: str) -> list[str]:
+        """List the alias names currently registered for a food."""
+        return alias_names(self.get(f"/api/foods/{food_id}"))
+
+    def add_food_aliases(self, food_id: str, aliases: list) -> Dict[str, Any]:
+        """Add aliases to a food, preserving any that already exist.
+
+        Aliases already present (compared case-insensitively) are skipped, so
+        this is safe to call repeatedly.
+
+        Args:
+            food_id: The food's ID
+            aliases: Alias names to add
+
+        Returns:
+            Updated food object
+        """
+        to_add = normalize_aliases(aliases)  # validate before any request
+        current_food = self.get(f"/api/foods/{food_id}")
+        current_food["aliases"] = _merge_aliases(alias_names(current_food), to_add)
+        return self.put(f"/api/foods/{food_id}", json=current_food)
+
+    def remove_food_aliases(self, food_id: str, aliases: list) -> Dict[str, Any]:
+        """Remove aliases from a food, matching names case-insensitively.
+
+        Args:
+            food_id: The food's ID
+            aliases: Alias names to remove
+
+        Returns:
+            Updated food object
+        """
+        to_remove = normalize_aliases(aliases)  # validate before any request
+        current_food = self.get(f"/api/foods/{food_id}")
+        current_food["aliases"] = _drop_aliases(alias_names(current_food), to_remove)
         return self.put(f"/api/foods/{food_id}", json=current_food)
 
     def delete_food(self, food_id: str) -> None:
@@ -941,9 +1082,24 @@ class MealieClient:
         }
         return self.post("/api/foods/merge", json=payload)
 
-    def list_units(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
-        """List all units with pagination."""
-        params = {"page": page, "perPage": per_page}
+    def list_units(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        search: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """List units with pagination and an optional name search.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of units per page
+            search: Optional search string; Mealie matches it against the
+                name (case-insensitive substring), which makes it the quickest
+                way to find an existing unit before adding an alias to it
+        """
+        params: Dict[str, Any] = {"page": page, "perPage": per_page}
+        if search:
+            params["search"] = search
         return self.get("/api/units", params=params)
 
     def get_unit(self, unit_id: str) -> Dict[str, Any]:
@@ -955,18 +1111,79 @@ class MealieClient:
         unit_id: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        abbreviation: Optional[str] = None
+        abbreviation: Optional[str] = None,
+        aliases: Optional[list] = None
     ) -> Dict[str, Any]:
-        """Update an existing unit."""
-        payload = {}
-        if name is not None:
-            payload["name"] = name
-        if description is not None:
-            payload["description"] = description
-        if abbreviation is not None:
-            payload["abbreviation"] = abbreviation
+        """Update an existing unit.
 
-        return self.patch(f"/api/units/{unit_id}", json=payload)
+        Args:
+            unit_id: The unit's ID
+            name: New name for the unit
+            description: New description
+            abbreviation: New abbreviation (e.g., "tsp", "oz")
+            aliases: Replacement alias list. Pass ``[]`` to clear all aliases,
+                or omit to leave the existing aliases untouched.
+
+        Returns:
+            Updated unit object
+
+        Note:
+            ``/api/units/{id}`` only supports PUT with the full unit object, so
+            this method fetches the current unit first and merges into it. A
+            partial PATCH drops every field that is not sent.
+        """
+        # Validate input before making any request
+        new_aliases = normalize_aliases(aliases) if aliases is not None else None
+
+        current_unit = self.get(f"/api/units/{unit_id}")
+
+        if name is not None:
+            current_unit["name"] = name
+        if description is not None:
+            current_unit["description"] = description
+        if abbreviation is not None:
+            current_unit["abbreviation"] = abbreviation
+        if new_aliases is not None:
+            current_unit["aliases"] = new_aliases
+
+        return self.put(f"/api/units/{unit_id}", json=current_unit)
+
+    def get_unit_aliases(self, unit_id: str) -> list[str]:
+        """List the alias names currently registered for a unit."""
+        return alias_names(self.get(f"/api/units/{unit_id}"))
+
+    def add_unit_aliases(self, unit_id: str, aliases: list) -> Dict[str, Any]:
+        """Add aliases to a unit, preserving any that already exist.
+
+        Aliases already present (compared case-insensitively) are skipped, so
+        this is safe to call repeatedly.
+
+        Args:
+            unit_id: The unit's ID
+            aliases: Alias names to add
+
+        Returns:
+            Updated unit object
+        """
+        to_add = normalize_aliases(aliases)  # validate before any request
+        current_unit = self.get(f"/api/units/{unit_id}")
+        current_unit["aliases"] = _merge_aliases(alias_names(current_unit), to_add)
+        return self.put(f"/api/units/{unit_id}", json=current_unit)
+
+    def remove_unit_aliases(self, unit_id: str, aliases: list) -> Dict[str, Any]:
+        """Remove aliases from a unit, matching names case-insensitively.
+
+        Args:
+            unit_id: The unit's ID
+            aliases: Alias names to remove
+
+        Returns:
+            Updated unit object
+        """
+        to_remove = normalize_aliases(aliases)  # validate before any request
+        current_unit = self.get(f"/api/units/{unit_id}")
+        current_unit["aliases"] = _drop_aliases(alias_names(current_unit), to_remove)
+        return self.put(f"/api/units/{unit_id}", json=current_unit)
 
     def delete_unit(self, unit_id: str) -> None:
         """Delete a unit."""

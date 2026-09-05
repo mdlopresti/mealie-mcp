@@ -633,7 +633,8 @@ def recipes_update(
 
 def recipes_update_structured_ingredients(
     slug: str,
-    parsed_ingredients: list[dict]
+    parsed_ingredients: list[dict],
+    create_missing_foods: bool = True
 ) -> str:
     """Update a recipe with structured ingredients from parser output.
 
@@ -644,9 +645,16 @@ def recipes_update_structured_ingredients(
         slug: The recipe's slug identifier
         parsed_ingredients: List of parsed ingredient dicts from parser tools.
             Each dict should have an 'ingredient' field with structured data.
+        create_missing_foods: When True (default), any food the parser did not
+            match to an existing food (no ``id``) is created before the recipe
+            is updated. When False, the recipe is left untouched and the
+            unmatched food names are returned instead, so they can be aliased
+            onto existing foods and re-parsed. This avoids creating duplicate
+            foods such as "scallions" next to an existing "green onion".
 
     Returns:
-        JSON string with updated recipe details
+        JSON string with updated recipe details, including any foods and units
+        that were created
 
     Example:
         # First parse ingredients
@@ -664,6 +672,7 @@ def recipes_update_structured_ingredients(
             # This avoids SQLAlchemy auto_init errors when updating recipes
             created_units = {}  # name -> id mapping
             created_foods = {}  # name -> id mapping
+            unmatched_foods = []  # food names with no id when create_missing_foods=False
 
             for parsed in parsed_ingredients:
                 if isinstance(parsed, dict) and "ingredient" in parsed:
@@ -695,8 +704,12 @@ def recipes_update_structured_ingredients(
                     if isinstance(food, dict):
                         food_name = food.get("name")
                         food_id = food.get("id")
+                        if food_name and not food_id and not create_missing_foods:
+                            # Caller wants to alias instead of creating duplicates
+                            if food_name not in unmatched_foods:
+                                unmatched_foods.append(food_name)
                         # If food has no ID, create it
-                        if food_name and not food_id and food_name not in created_foods:
+                        elif food_name and not food_id and food_name not in created_foods:
                             try:
                                 new_food = client.create_food(food_name)
                                 created_foods[food_name] = new_food.get("id")
@@ -705,6 +718,25 @@ def recipes_update_structured_ingredients(
                             except Exception as e:
                                 # If creation fails, we'll try to send as string
                                 pass
+                    elif not create_missing_foods:
+                        # A bare string food has no id either
+                        if str(food) not in unmatched_foods:
+                            unmatched_foods.append(str(food))
+
+            if unmatched_foods:
+                return json.dumps({
+                    "error": (
+                        f"{len(unmatched_foods)} ingredient food(s) did not match an existing "
+                        "food and create_missing_foods is False; the recipe was not updated"
+                    ),
+                    "unmatched_foods": unmatched_foods,
+                    "hint": (
+                        "Find the matching food with mealie_foods_list(search=...), add the "
+                        "unmatched name with mealie_foods_aliases_add, re-parse the ingredient "
+                        "line, and call this tool again. Or pass create_missing_foods=True "
+                        "to create new foods."
+                    )
+                }, indent=2)
 
             # Convert parser output format to Mealie ingredient format
             mealie_ingredients = []
@@ -818,6 +850,8 @@ def recipes_update_structured_ingredients(
                     "id": updated_recipe.get("id"),
                     "ingredient_count": len(mealie_ingredients),
                 },
+                "created_foods": created_foods,
+                "created_units": created_units,
                 "debug_ingredients_sent": mealie_ingredients  # v1.4.13: Include debug info
             }
             return json.dumps(result, indent=2)

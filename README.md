@@ -16,7 +16,7 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - `mealie_recipes_create` - Create a new recipe
 - `mealie_recipes_create_from_url` - Import recipe by scraping a URL
 - `mealie_recipes_update` - Update an existing recipe
-- `mealie_recipes_update_structured_ingredients` - Update recipe with structured ingredients from parser
+- `mealie_recipes_update_structured_ingredients` - Update recipe with structured ingredients from parser (set `create_missing_foods=False` to refuse unmatched foods instead of creating duplicates)
 - `mealie_recipes_delete` - Delete a recipe
 
 **Meal Planning**
@@ -45,6 +45,39 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 **Ingredient Parsing**
 - `mealie_parser_ingredient` - Parse single ingredient string to structured format
 - `mealie_parser_ingredients_batch` - Parse multiple ingredient strings at once
+
+**Ingredient Aliases**
+
+Aliases are alternate names the Mealie ingredient parser matches back to a food
+or unit, so a recipe calling for "scallions" resolves to your "green onion"
+food instead of creating a duplicate.
+
+- `mealie_foods_aliases_list` - List the aliases registered for a food
+- `mealie_foods_aliases_add` - Add aliases to a food, keeping existing ones
+- `mealie_foods_aliases_remove` - Remove aliases from a food
+- `mealie_units_aliases_list` - List the aliases registered for a unit
+- `mealie_units_aliases_add` - Add aliases to a unit, keeping existing ones
+- `mealie_units_aliases_remove` - Remove aliases from a unit
+
+`mealie_foods_create`, `mealie_foods_update`, `mealie_units_create` and
+`mealie_units_update` also accept an `aliases` list, which *replaces* the whole
+set. Use the add/remove tools for incremental changes.
+
+`mealie_foods_list` and `mealie_units_list` accept a `search` string so an
+existing food or unit can be found by name without paging the whole library.
+
+**Linking a new recipe to existing foods without creating duplicates**
+
+1. Import the recipe (`mealie_recipes_create_from_url` or `mealie_recipes_create`).
+2. Parse the ingredient lines with `mealie_parser_ingredients_batch`. Foods that
+   match an existing name or alias come back with an `id`; unmatched ones do not.
+3. Call `mealie_recipes_update_structured_ingredients` with
+   `create_missing_foods=False`. If any food is unmatched the recipe is left
+   untouched and the unmatched names are returned.
+4. For each unmatched name, find the right food with
+   `mealie_foods_list(search=...)`, add the name with `mealie_foods_aliases_add`,
+   re-parse that line, and call step 3 again. Once the parser is confident the
+   recipe links to your existing foods.
 
 ### Resources
 
