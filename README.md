@@ -46,6 +46,23 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - `mealie_parser_ingredient` - Parse single ingredient string to structured format
 - `mealie_parser_ingredients_batch` - Parse multiple ingredient strings at once
 
+**Ingredient Aliases**
+
+Aliases are alternate names the Mealie ingredient parser matches back to a food
+or unit, so a recipe calling for "scallions" resolves to your "green onion"
+food instead of creating a duplicate.
+
+- `mealie_foods_aliases_list` - List the aliases registered for a food
+- `mealie_foods_aliases_add` - Add aliases to a food, keeping existing ones
+- `mealie_foods_aliases_remove` - Remove aliases from a food
+- `mealie_units_aliases_list` - List the aliases registered for a unit
+- `mealie_units_aliases_add` - Add aliases to a unit, keeping existing ones
+- `mealie_units_aliases_remove` - Remove aliases from a unit
+
+`mealie_foods_create`, `mealie_foods_update`, `mealie_units_create` and
+`mealie_units_update` also accept an `aliases` list, which *replaces* the whole
+set. Use the add/remove tools for incremental changes.
+
 ### Resources
 
 - `recipes://list` - Browse all recipes

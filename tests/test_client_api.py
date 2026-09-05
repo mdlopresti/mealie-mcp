@@ -4,6 +4,8 @@ Comprehensive tests for MealieClient API methods.
 Tests all client API methods using respx to mock HTTP responses.
 """
 
+import json
+
 import pytest
 import respx
 from httpx import Response
@@ -370,15 +372,25 @@ class TestFoodUnitAPIs:
 
     @respx.mock
     def test_update_unit(self, mock_client):
-        """Test update unit."""
-        route = respx.patch(
+        """Test update unit fetches the current unit then PUTs the merged object."""
+        get_route = respx.get(
             "https://test.mealie.example.com/api/units/unit-1"
-        ).mock(return_value=Response(200, json={"id": "unit-1", "name": "cups"}))
+        ).mock(return_value=Response(
+            200, json={"id": "unit-1", "name": "cup", "abbreviation": "c"}
+        ))
+        put_route = respx.put(
+            "https://test.mealie.example.com/api/units/unit-1"
+        ).mock(return_value=Response(
+            200, json={"id": "unit-1", "name": "cups", "abbreviation": "c"}
+        ))
 
         result = mock_client.update_unit("unit-1", name="cups")
 
         assert result["name"] == "cups"
-        assert route.called
+        assert get_route.called
+        assert put_route.called
+        # Fields not passed in must be preserved from the fetched unit
+        assert json.loads(put_route.calls[0].request.content)["abbreviation"] == "c"
 
     @respx.mock
     def test_delete_unit(self, mock_client):

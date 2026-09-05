@@ -811,9 +811,12 @@ class TestMealieClientFoodsAndUnits:
 
     @respx.mock
     def test_update_unit(self):
-        """Test update_unit patches unit fields."""
+        """Test update_unit fetches the current unit then PUTs the merged object."""
         unit = build_unit(name="tablespoon", abbreviation="T")
-        respx.patch("https://test.example.com/api/units/unit-1").mock(
+        respx.get("https://test.example.com/api/units/unit-1").mock(
+            return_value=Response(200, json=unit)
+        )
+        respx.put("https://test.example.com/api/units/unit-1").mock(
             return_value=Response(200, json=unit)
         )
 
