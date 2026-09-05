@@ -174,6 +174,22 @@ class TestFoodAliasClient:
         assert sent["aliases"] == [{"name": "scallions"}]
 
     @respx.mock
+    def test_invalid_aliases_are_rejected_before_any_request(self):
+        get = respx.get(f"{BASE_URL}/api/foods/food-1").mock(
+            return_value=Response(200, json=food(["scallions"]))
+        )
+        client = MealieClient(BASE_URL, "token")
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            client.add_food_aliases("food-1", ["  "])
+        with pytest.raises(ValueError, match="must be a string or a dict"):
+            client.remove_food_aliases("food-1", [42])
+        with pytest.raises(ValueError, match="cannot be empty"):
+            client.update_food("food-1", aliases=[""])
+
+        assert not get.called
+
+    @respx.mock
     def test_update_food_replaces_aliases(self):
         respx.get(f"{BASE_URL}/api/foods/food-1").mock(
             return_value=Response(200, json=food(["scallions"]))
@@ -287,6 +303,22 @@ class TestUnitAliasClient:
         assert sent["aliases"] == [{"name": "T"}]
 
     @respx.mock
+    def test_invalid_unit_aliases_are_rejected_before_any_request(self):
+        get = respx.get(f"{BASE_URL}/api/units/unit-1").mock(
+            return_value=Response(200, json=unit(["tblsp"]))
+        )
+        client = MealieClient(BASE_URL, "token")
+
+        with pytest.raises(ValueError, match="cannot be empty"):
+            client.add_unit_aliases("unit-1", ["  "])
+        with pytest.raises(ValueError, match="must be a string or a dict"):
+            client.remove_unit_aliases("unit-1", [None])
+        with pytest.raises(ValueError, match="cannot be empty"):
+            client.update_unit("unit-1", aliases=[""])
+
+        assert not get.called
+
+    @respx.mock
     def test_update_unit_preserves_unsent_fields(self):
         respx.get(f"{BASE_URL}/api/units/unit-1").mock(
             return_value=Response(200, json={
@@ -337,36 +369,57 @@ class TestFoodAliasTools:
             "aliases": ["scallions"],
         }
 
-    def test_foods_aliases_add_reports_count(self):
+    def test_foods_aliases_add_returns_resulting_list(self):
         mock_client = create_mock_client()
-        mock_client.get_food_aliases.return_value = ["scallions"]
         mock_client.add_food_aliases.return_value = food(["scallions", "spring onions"])
 
         with patch('src.tools.foods.MealieClient', return_value=mock_client):
             data = json.loads(foods_aliases_add("food-1", ["spring onions"]))
 
         assert data["success"] is True
-        assert data["message"] == "Added 1 alias(es)"
+        assert data["food_id"] == "food-1"
         assert data["aliases"] == ["scallions", "spring onions"]
         mock_client.add_food_aliases.assert_called_once_with("food-1", ["spring onions"])
+        # The tool must not pre-fetch; the client method already reads the food
+        mock_client.get_food.assert_not_called()
+        mock_client.get_food_aliases.assert_not_called()
 
-    def test_foods_aliases_remove_reports_count(self):
+    def test_foods_aliases_remove_returns_resulting_list(self):
         mock_client = create_mock_client()
-        mock_client.get_food_aliases.return_value = ["scallions", "spring onions"]
         mock_client.remove_food_aliases.return_value = food(["spring onions"])
 
         with patch('src.tools.foods.MealieClient', return_value=mock_client):
             data = json.loads(foods_aliases_remove("food-1", ["scallions"]))
 
         assert data["success"] is True
-        assert data["message"] == "Removed 1 alias(es)"
         assert data["aliases"] == ["spring onions"]
+        mock_client.remove_food_aliases.assert_called_once_with("food-1", ["scallions"])
+        mock_client.get_food_aliases.assert_not_called()
+
+    @respx.mock
+    def test_foods_aliases_add_makes_one_get_and_one_put(self):
+        """End-to-end through the real client: exactly two HTTP requests."""
+        get = respx.get(f"{BASE_URL}/api/foods/food-1").mock(
+            return_value=Response(200, json=food(["scallions"]))
+        )
+        put = respx.put(f"{BASE_URL}/api/foods/food-1").mock(
+            return_value=Response(200, json=food(["scallions", "spring onions"]))
+        )
+
+        with patch('src.tools.foods.MealieClient',
+                   return_value=MealieClient(BASE_URL, "token")):
+            data = json.loads(foods_aliases_add("food-1", ["spring onions"]))
+
+        assert data["success"] is True
+        assert data["aliases"] == ["scallions", "spring onions"]
+        assert get.call_count == 1
+        assert put.call_count == 1
 
     def test_foods_aliases_add_surfaces_api_errors(self):
         from src.client import MealieAPIError
 
         mock_client = create_mock_client()
-        mock_client.get_food_aliases.side_effect = MealieAPIError(
+        mock_client.add_food_aliases.side_effect = MealieAPIError(
             "Not found", status_code=404, response_body="{}"
         )
 
@@ -378,7 +431,6 @@ class TestFoodAliasTools:
 
     def test_foods_aliases_add_surfaces_validation_errors(self):
         mock_client = create_mock_client()
-        mock_client.get_food_aliases.return_value = []
         mock_client.add_food_aliases.side_effect = ValueError("Alias names cannot be empty")
 
         with patch('src.tools.foods.MealieClient', return_value=mock_client):
@@ -403,26 +455,44 @@ class TestUnitAliasTools:
             "aliases": ["tblsp"],
         }
 
-    def test_units_aliases_add_reports_count(self):
+    def test_units_aliases_add_returns_resulting_list(self):
         mock_client = create_mock_client()
-        mock_client.get_unit_aliases.return_value = ["tblsp"]
         mock_client.add_unit_aliases.return_value = unit(["tblsp", "T"])
 
         with patch('src.tools.foods.MealieClient', return_value=mock_client):
             data = json.loads(units_aliases_add("unit-1", ["T"]))
 
         assert data["success"] is True
-        assert data["message"] == "Added 1 alias(es)"
+        assert data["unit_id"] == "unit-1"
         assert data["aliases"] == ["tblsp", "T"]
+        mock_client.get_unit_aliases.assert_not_called()
 
-    def test_units_aliases_remove_reports_count(self):
+    def test_units_aliases_remove_returns_resulting_list(self):
         mock_client = create_mock_client()
-        mock_client.get_unit_aliases.return_value = ["tblsp", "T"]
         mock_client.remove_unit_aliases.return_value = unit(["T"])
 
         with patch('src.tools.foods.MealieClient', return_value=mock_client):
             data = json.loads(units_aliases_remove("unit-1", ["tblsp"]))
 
         assert data["success"] is True
-        assert data["message"] == "Removed 1 alias(es)"
         assert data["aliases"] == ["T"]
+        mock_client.get_unit_aliases.assert_not_called()
+
+    @respx.mock
+    def test_units_aliases_remove_makes_one_get_and_one_put(self):
+        """End-to-end through the real client: exactly two HTTP requests."""
+        get = respx.get(f"{BASE_URL}/api/units/unit-1").mock(
+            return_value=Response(200, json=unit(["tblsp", "T"]))
+        )
+        put = respx.put(f"{BASE_URL}/api/units/unit-1").mock(
+            return_value=Response(200, json=unit(["T"]))
+        )
+
+        with patch('src.tools.foods.MealieClient',
+                   return_value=MealieClient(BASE_URL, "token")):
+            data = json.loads(units_aliases_remove("unit-1", ["tblsp"]))
+
+        assert data["success"] is True
+        assert data["aliases"] == ["T"]
+        assert get.call_count == 1
+        assert put.call_count == 1

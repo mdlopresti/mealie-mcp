@@ -69,6 +69,23 @@ def alias_names(item: Dict[str, Any]) -> list[str]:
     ]
 
 
+def _merge_aliases(existing: list[str], to_add: list[Dict[str, str]]) -> list[Dict[str, str]]:
+    """Append normalized aliases to ``existing`` names, skipping case-insensitive duplicates."""
+    seen = {name.casefold() for name in existing}
+    merged = [{"name": name} for name in existing]
+    for alias in to_add:
+        if alias["name"].casefold() not in seen:
+            seen.add(alias["name"].casefold())
+            merged.append(alias)
+    return merged
+
+
+def _drop_aliases(existing: list[str], to_remove: list[Dict[str, str]]) -> list[Dict[str, str]]:
+    """Drop normalized aliases from ``existing`` names, matching case-insensitively."""
+    drop = {alias["name"].casefold() for alias in to_remove}
+    return [{"name": name} for name in existing if name.casefold() not in drop]
+
+
 # Error message templates for common status codes
 _ERROR_TEMPLATES = {
     422: {
@@ -982,6 +999,9 @@ class MealieClient:
             The Mealie API requires PUT with the full food object.
             This method fetches the current food first, then updates it.
         """
+        # Validate input before making any request
+        new_aliases = normalize_aliases(aliases) if aliases is not None else None
+
         # GET current food to preserve all fields
         current_food = self.get(f"/api/foods/{food_id}")
 
@@ -992,8 +1012,8 @@ class MealieClient:
             current_food["description"] = description
         if label_id is not None:
             current_food["labelId"] = label_id
-        if aliases is not None:
-            current_food["aliases"] = normalize_aliases(aliases)
+        if new_aliases is not None:
+            current_food["aliases"] = new_aliases
 
         # PUT the complete updated object
         return self.put(f"/api/foods/{food_id}", json=current_food)
@@ -1015,9 +1035,9 @@ class MealieClient:
         Returns:
             Updated food object
         """
+        to_add = normalize_aliases(aliases)  # validate before any request
         current_food = self.get(f"/api/foods/{food_id}")
-        merged = alias_names(current_food) + [a["name"] for a in normalize_aliases(aliases)]
-        current_food["aliases"] = normalize_aliases(merged)
+        current_food["aliases"] = _merge_aliases(alias_names(current_food), to_add)
         return self.put(f"/api/foods/{food_id}", json=current_food)
 
     def remove_food_aliases(self, food_id: str, aliases: list) -> Dict[str, Any]:
@@ -1030,13 +1050,9 @@ class MealieClient:
         Returns:
             Updated food object
         """
+        to_remove = normalize_aliases(aliases)  # validate before any request
         current_food = self.get(f"/api/foods/{food_id}")
-        to_remove = {a["name"].casefold() for a in normalize_aliases(aliases)}
-        current_food["aliases"] = [
-            {"name": name}
-            for name in alias_names(current_food)
-            if name.casefold() not in to_remove
-        ]
+        current_food["aliases"] = _drop_aliases(alias_names(current_food), to_remove)
         return self.put(f"/api/foods/{food_id}", json=current_food)
 
     def delete_food(self, food_id: str) -> None:
@@ -1086,6 +1102,9 @@ class MealieClient:
             this method fetches the current unit first and merges into it. A
             partial PATCH drops every field that is not sent.
         """
+        # Validate input before making any request
+        new_aliases = normalize_aliases(aliases) if aliases is not None else None
+
         current_unit = self.get(f"/api/units/{unit_id}")
 
         if name is not None:
@@ -1094,8 +1113,8 @@ class MealieClient:
             current_unit["description"] = description
         if abbreviation is not None:
             current_unit["abbreviation"] = abbreviation
-        if aliases is not None:
-            current_unit["aliases"] = normalize_aliases(aliases)
+        if new_aliases is not None:
+            current_unit["aliases"] = new_aliases
 
         return self.put(f"/api/units/{unit_id}", json=current_unit)
 
@@ -1116,9 +1135,9 @@ class MealieClient:
         Returns:
             Updated unit object
         """
+        to_add = normalize_aliases(aliases)  # validate before any request
         current_unit = self.get(f"/api/units/{unit_id}")
-        merged = alias_names(current_unit) + [a["name"] for a in normalize_aliases(aliases)]
-        current_unit["aliases"] = normalize_aliases(merged)
+        current_unit["aliases"] = _merge_aliases(alias_names(current_unit), to_add)
         return self.put(f"/api/units/{unit_id}", json=current_unit)
 
     def remove_unit_aliases(self, unit_id: str, aliases: list) -> Dict[str, Any]:
@@ -1131,13 +1150,9 @@ class MealieClient:
         Returns:
             Updated unit object
         """
+        to_remove = normalize_aliases(aliases)  # validate before any request
         current_unit = self.get(f"/api/units/{unit_id}")
-        to_remove = {a["name"].casefold() for a in normalize_aliases(aliases)}
-        current_unit["aliases"] = [
-            {"name": name}
-            for name in alias_names(current_unit)
-            if name.casefold() not in to_remove
-        ]
+        current_unit["aliases"] = _drop_aliases(alias_names(current_unit), to_remove)
         return self.put(f"/api/units/{unit_id}", json=current_unit)
 
     def delete_unit(self, unit_id: str) -> None:

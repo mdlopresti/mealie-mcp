@@ -497,15 +497,13 @@ def foods_aliases_add(food_id: str, aliases: list[str]) -> str:
     """
     try:
         with MealieClient() as client:
-            before = client.get_food_aliases(food_id)
             food = client.add_food_aliases(food_id, aliases)
-            after = alias_names(food)
             return json.dumps({
                 "success": True,
-                "message": f"Added {len(after) - len(before)} alias(es)",
+                "message": "Food aliases updated (existing aliases preserved)",
                 "food_id": food.get("id"),
                 "name": food.get("name"),
-                "aliases": after
+                "aliases": alias_names(food)
             }, indent=2)
 
     except MealieAPIError as e:
@@ -537,15 +535,13 @@ def foods_aliases_remove(food_id: str, aliases: list[str]) -> str:
     """
     try:
         with MealieClient() as client:
-            before = client.get_food_aliases(food_id)
             food = client.remove_food_aliases(food_id, aliases)
-            after = alias_names(food)
             return json.dumps({
                 "success": True,
-                "message": f"Removed {len(before) - len(after)} alias(es)",
+                "message": "Food aliases updated",
                 "food_id": food.get("id"),
                 "name": food.get("name"),
-                "aliases": after
+                "aliases": alias_names(food)
             }, indent=2)
 
     except MealieAPIError as e:
@@ -612,15 +608,13 @@ def units_aliases_add(unit_id: str, aliases: list[str]) -> str:
     """
     try:
         with MealieClient() as client:
-            before = client.get_unit_aliases(unit_id)
             unit = client.add_unit_aliases(unit_id, aliases)
-            after = alias_names(unit)
             return json.dumps({
                 "success": True,
-                "message": f"Added {len(after) - len(before)} alias(es)",
+                "message": "Unit aliases updated (existing aliases preserved)",
                 "unit_id": unit.get("id"),
                 "name": unit.get("name"),
-                "aliases": after
+                "aliases": alias_names(unit)
             }, indent=2)
 
     except MealieAPIError as e:
@@ -652,15 +646,13 @@ def units_aliases_remove(unit_id: str, aliases: list[str]) -> str:
     """
     try:
         with MealieClient() as client:
-            before = client.get_unit_aliases(unit_id)
             unit = client.remove_unit_aliases(unit_id, aliases)
-            after = alias_names(unit)
             return json.dumps({
                 "success": True,
-                "message": f"Removed {len(before) - len(after)} alias(es)",
+                "message": "Unit aliases updated",
                 "unit_id": unit.get("id"),
                 "name": unit.get("name"),
-                "aliases": after
+                "aliases": alias_names(unit)
             }, indent=2)
 
     except MealieAPIError as e:
