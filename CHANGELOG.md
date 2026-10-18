@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added `date` and `entry_type` to each meal in `mealplans_get_by_date` and `mealplans_today`, matching `mealplans_list`, so a flattened list keeps them
 - Added event notifications management with 6 new MCP tools (Batch 2 - Phase 2.3)
 - Added `mealie_notifications_list` tool to list all event notifications with pagination
 - Added `mealie_notifications_create` tool to create Apprise-based notifications for Mealie events
@@ -52,6 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `list_shared_recipes`, `create_shared_recipe`, `get_shared_recipe`, `delete_shared_recipe`, and `access_shared_recipe` methods to MealieClient
 - Added comprehensive test coverage with 20 unit tests for shared recipe operations
 - Added support for optional expiration dates when creating share links
+
+### Fixed
+- Fixed meal plan reads over a date range ignoring Mealie's pagination envelope. `GET /api/households/mealplans` returns `{page, total, items}`, not a list, so `mealplans_get_by_date` reported the envelope as a single meal with every field null (and a count of 1 even for an empty day), `mealplans_list` returned the raw envelope instead of its formatted entries, `mealplans_search` and `mealplans_delete_range` failed with an unexpected error, and the `mealplans://current` resource always showed an empty week. All of them, and `shopping_generate_from_mealplan`, now read the entries under `items` and send `perPage=-1` so a range with more than 50 entries is not cut short. `mealplans_today` was unaffected, since `/today` returns a plain list
 
 ## [1.8.0] - 2025-12-23
 

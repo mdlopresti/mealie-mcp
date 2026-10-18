@@ -13,11 +13,11 @@ from typing import Optional
 
 # Handle imports for both module usage and standalone execution
 try:
-    from ..client import MealieClient, MealieAPIError
+    from ..client import MealieClient, MealieAPIError, mealplan_entries, mealplan_range_params
 except ImportError:
     # Add parent directory to path for standalone execution
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    from client import MealieClient, MealieAPIError
+    from client import MealieClient, MealieAPIError, mealplan_entries, mealplan_range_params
 
 
 def shopping_lists_list() -> str:
@@ -444,28 +444,12 @@ def shopping_generate_from_mealplan(
                 end = date.fromisoformat(end_date)
 
             # Get meal plans for the date range
-            mealplan_response = client.get("/api/households/mealplans", params={
-                "start_date": start.isoformat(),
-                "end_date": end.isoformat(),
-            })
+            entries = mealplan_entries(client.get(
+                "/api/households/mealplans",
+                params=mealplan_range_params(start.isoformat(), end.isoformat())
+            ))
 
-            if not mealplan_response:
-                return json.dumps({
-                    "error": "No meal plans found for the specified date range",
-                    "start_date": start.isoformat(),
-                    "end_date": end.isoformat(),
-                }, indent=2)
-
-            # Handle paginated response
-            mealplan_entries = []
-            if isinstance(mealplan_response, dict) and "items" in mealplan_response:
-                mealplan_entries = mealplan_response["items"]
-            elif isinstance(mealplan_response, list):
-                mealplan_entries = mealplan_response
-            else:
-                mealplan_entries = [mealplan_response]
-
-            if not mealplan_entries:
+            if not entries:
                 return json.dumps({
                     "error": "No meal plans found for the specified date range",
                     "start_date": start.isoformat(),
@@ -474,7 +458,7 @@ def shopping_generate_from_mealplan(
 
             # Collect all recipe IDs
             recipe_ids = []
-            for entry in mealplan_entries:
+            for entry in entries:
                 recipe_id = entry.get("recipeId")
                 if recipe_id:
                     recipe_ids.append(recipe_id)

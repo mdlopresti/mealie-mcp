@@ -15,6 +15,41 @@ import httpx
 from dotenv import load_dotenv
 
 
+def mealplan_range_params(start_date: Optional[str], end_date: Optional[str]) -> Dict[str, Any]:
+    """Query params for ``GET /api/households/mealplans`` over a date range.
+
+    The endpoint is paginated with a default page size of 50, so
+    ``perPage=-1`` (Mealie's "return everything" value) is sent too.
+    """
+    params: Dict[str, Any] = {"page": 1, "perPage": -1}
+    if start_date:
+        params["start_date"] = start_date
+    if end_date:
+        params["end_date"] = end_date
+    return params
+
+
+def mealplan_entries(response: Any) -> list[Dict[str, Any]]:
+    """Meal plan entries from ``GET /api/households/mealplans``.
+
+    Mealie returns a pagination envelope with the entries under ``items``;
+    a bare list is accepted too.
+
+    Raises:
+        MealieAPIError: If the body is neither, so an odd response (from a
+            proxy, say) isn't mistaken for an empty date range
+    """
+    if isinstance(response, dict) and isinstance(response.get("items"), list):
+        return [entry for entry in response["items"] if isinstance(entry, dict)]
+    if isinstance(response, list):
+        return [entry for entry in response if isinstance(entry, dict)]
+    raise MealieAPIError(
+        "Unexpected response from /api/households/mealplans: expected a page of "
+        f"entries with 'items', got {type(response).__name__}",
+        response_body=json.dumps(response)[:500] if response is not None else None,
+    )
+
+
 # Error message templates for common status codes
 _ERROR_TEMPLATES = {
     422: {

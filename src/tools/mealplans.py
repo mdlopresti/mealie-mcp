@@ -13,11 +13,11 @@ from typing import Optional
 
 # Handle imports for both module usage and standalone execution
 try:
-    from ..client import MealieClient, MealieAPIError
+    from ..client import MealieClient, MealieAPIError, mealplan_entries, mealplan_range_params
 except ImportError:
     # Add parent directory to path for standalone execution
     sys.path.insert(0, str(Path(__file__).parent.parent))
-    from client import MealieClient, MealieAPIError
+    from client import MealieClient, MealieAPIError, mealplan_entries, mealplan_range_params
 
 # Sentinel value for clearing optional fields
 CLEAR_FIELD = "__CLEAR__"
@@ -49,38 +49,32 @@ def mealplans_list(
             else:
                 end = date.fromisoformat(end_date)
 
-            params = {
+            response = client.get(
+                "/api/households/mealplans",
+                params=mealplan_range_params(start.isoformat(), end.isoformat())
+            )
+
+            entries = []
+            for entry in mealplan_entries(response):
+                recipe = entry.get("recipe")
+                entries.append({
+                    "id": entry.get("id"),
+                    "date": entry.get("date"),
+                    "entry_type": entry.get("entryType"),
+                    "title": entry.get("title"),
+                    "text": entry.get("text"),
+                    "recipe_id": entry.get("recipeId"),
+                    "recipe_name": recipe.get("name") if isinstance(recipe, dict) else None,
+                    "recipe_slug": recipe.get("slug") if isinstance(recipe, dict) else None,
+                })
+
+            result = {
                 "start_date": start.isoformat(),
                 "end_date": end.isoformat(),
+                "count": len(entries),
+                "entries": entries
             }
-
-            response = client.get("/api/households/mealplans", params=params)
-
-            # Format response
-            if isinstance(response, list):
-                entries = []
-                for entry in response:
-                    recipe = entry.get("recipe")
-                    entries.append({
-                        "id": entry.get("id"),
-                        "date": entry.get("date"),
-                        "entry_type": entry.get("entryType"),
-                        "title": entry.get("title"),
-                        "text": entry.get("text"),
-                        "recipe_id": entry.get("recipeId"),
-                        "recipe_name": recipe.get("name") if isinstance(recipe, dict) else None,
-                        "recipe_slug": recipe.get("slug") if isinstance(recipe, dict) else None,
-                    })
-
-                result = {
-                    "start_date": start.isoformat(),
-                    "end_date": end.isoformat(),
-                    "count": len(entries),
-                    "entries": entries
-                }
-                return json.dumps(result, indent=2)
-
-            return json.dumps(response, indent=2)
+            return json.dumps(result, indent=2)
 
     except MealieAPIError as e:
         return json.dumps({
@@ -122,7 +116,10 @@ def mealplans_today() -> str:
 
                 recipe = entry.get("recipe")
                 meals_by_type[entry_type].append({
+                    # Same per-item fields as mealplans_list, so a flattened list matches
                     "id": entry.get("id"),
+                    "date": entry.get("date"),
+                    "entry_type": entry.get("entryType"),
                     "title": entry.get("title"),
                     "text": entry.get("text"),
                     "recipe_id": entry.get("recipeId"),
@@ -440,12 +437,10 @@ def mealplans_get_by_date(meal_date: str) -> str:
     """
     try:
         with MealieClient() as client:
-            params = {
-                "start_date": meal_date,
-                "end_date": meal_date,
-            }
-
-            response = client.get("/api/households/mealplans", params=params)
+            response = mealplan_entries(client.get(
+                "/api/households/mealplans",
+                params=mealplan_range_params(meal_date, meal_date)
+            ))
 
             if not response:
                 return json.dumps({
@@ -453,10 +448,6 @@ def mealplans_get_by_date(meal_date: str) -> str:
                     "count": 0,
                     "meals": {}
                 }, indent=2)
-
-            # Ensure response is a list
-            if not isinstance(response, list):
-                response = [response]
 
             # Organize by entry type
             meals_by_type = {}
@@ -467,7 +458,10 @@ def mealplans_get_by_date(meal_date: str) -> str:
 
                 recipe = entry.get("recipe")
                 meals_by_type[entry_type].append({
+                    # Same per-item fields as mealplans_list, so a flattened list matches
                     "id": entry.get("id"),
+                    "date": entry.get("date"),
+                    "entry_type": entry.get("entryType"),
                     "title": entry.get("title"),
                     "text": entry.get("text"),
                     "recipe_id": entry.get("recipeId"),
@@ -684,7 +678,10 @@ def mealplans_search(
 
         with MealieClient() as client:
             # Get all meal plans in date range
-            all_plans = client.get(f"/api/households/mealplans?start_date={start_date}&end_date={end_date}")
+            all_plans = mealplan_entries(client.get(
+                "/api/households/mealplans",
+                params=mealplan_range_params(start_date, end_date)
+            ))
 
             # Normalize query to lowercase for case-insensitive search
             query_lower = query.lower()
@@ -756,7 +753,10 @@ def mealplans_delete_range(
 
         with MealieClient() as client:
             # Get all meal plans in date range
-            all_plans = client.get(f"/api/households/mealplans?start_date={start_date}&end_date={end_date}")
+            all_plans = mealplan_entries(client.get(
+                "/api/households/mealplans",
+                params=mealplan_range_params(start_date, end_date)
+            ))
 
             # Delete each meal plan
             deleted_count = 0
