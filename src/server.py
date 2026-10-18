@@ -8,7 +8,10 @@ Provides tools and resources for recipe management, meal planning, and shopping 
 import os
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
+
+from pydantic import ConfigDict, Field, with_config
+from typing_extensions import TypedDict
 
 # Ensure the src directory is in the path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -94,12 +97,20 @@ from tools.foods import (
     foods_update,
     foods_delete,
     foods_merge,
+    foods_aliases_list,
+    foods_aliases_add,
+    foods_aliases_remove,
+    foods_substitutions_add,
+    foods_substitutions_remove,
     units_list,
     units_create,
     units_get,
     units_update,
     units_delete,
     units_merge,
+    units_aliases_list,
+    units_aliases_add,
+    units_aliases_remove,
 )
 from tools.organizers import (
     categories_list,
@@ -167,6 +178,59 @@ mcp = FastMCP("mealie")
 
 
 # =============================================================================
+# Shared argument schemas
+# =============================================================================
+
+_FoodRef = Optional[str | dict[str, Any]]
+
+
+@with_config(ConfigDict(extra="forbid"))
+class SubstitutionEntry(TypedDict, total=False):
+    """One "may be replaced by" option: a substitute food, a note, or both.
+
+    Unknown keys are rejected, so a misspelt key can't quietly turn a food
+    substitution into a note-only one.
+    """
+
+    substitute_food: Annotated[_FoodRef, Field(
+        description='Substitute food: a name (matched against food names, plural names '
+                    'and aliases) or {"id": ..., "name": ...}'
+    )]
+    substitute_food_id: Annotated[Optional[str], Field(description="Substitute food ID (UUID)")]
+    food: Annotated[_FoodRef, Field(description="Same as substitute_food")]
+    note: Annotated[Optional[str], Field(
+        description="Free-text note, e.g. a quantity or caveat. On its own it makes a note-only substitution"
+    )]
+    substituteFood: Annotated[_FoodRef, Field(
+        description="Mealie's read shape of substitute_food, accepted so reads can be passed back"
+    )]
+    substituteFoodId: Annotated[Optional[str], Field(
+        description="Mealie's read shape of substitute_food_id"
+    )]
+
+
+# A bare string is a substitute food name
+Substitutions = list[SubstitutionEntry | str]
+
+
+@with_config(ConfigDict(extra="allow"))
+class ParsedIngredientLine(TypedDict, total=False):
+    """A parser result ({input, confidence, ingredient}) or a bare ingredient.
+
+    Other keys, such as the parser's ``input`` and ``confidence`` or a bare
+    ingredient's ``quantity``/``unit``/``food``/``note``, are passed through.
+    """
+
+    ingredient: Annotated[Optional[dict[str, Any]], Field(
+        description="Structured ingredient from the parser: quantity, unit, food, note, display"
+    )]
+    substitutions: Annotated[Optional[Substitutions], Field(
+        description="Ingredient options for this line. Wins over a substitutions list inside "
+                    "'ingredient', since the parser always returns an empty one there"
+    )]
+
+
+# =============================================================================
 # Tools - Actions the AI can perform
 # =============================================================================
 
@@ -222,7 +286,9 @@ def mealie_recipes_get(slug: str) -> str:
         slug: The recipe's URL slug identifier
 
     Returns:
-        JSON string with full recipe details including ingredients, instructions, nutrition
+        JSON string with full recipe details including ingredients, instructions, nutrition.
+        Each ingredient line has a `substitutions` list of {substituteFoodId,
+        substituteFood: {id, name, pluralName}, note}.
     """
     return recipes_get(slug=slug)
 
@@ -359,7 +425,8 @@ def mealie_recipes_update(
 @mcp.tool()
 def mealie_recipes_update_structured_ingredients(
     slug: str,
-    parsed_ingredients: list[dict]
+    parsed_ingredients: list[ParsedIngredientLine],
+    create_missing_foods: bool = True
 ) -> str:
     """Update a recipe with structured ingredients from parser output.
 
@@ -376,9 +443,33 @@ def mealie_recipes_update_structured_ingredients(
             - food: string or dict with name (e.g., "flour" or {"name": "flour"})
             - note: optional string (e.g., "sifted")
             - display: optional string for human-readable format
+            - substitutions: optional list of ingredient options for this line, set on
+              the ingredient or beside it on a parser result (beside it wins, since the
+              parser already returns an empty list on the ingredient). Each entry is a
+              food name ("chopped tomatoes"), or a dict with `substitute_food` (a name
+              or {"id", "name"}; `food` also works) or `substitute_food_id`, plus an
+              optional `note`, e.g.
+              {"substitute_food": "vegan block", "note": "for a dairy-free version"}.
+              A note on its own is also allowed. Unknown keys are an error. Names are
+              matched case-insensitively
+              against existing food names, plural names and aliases. The whole
+              ingredient list is replaced, so a line without substitutions is saved
+              with none.
+        create_missing_foods: When True (default), foods the parser did not match to
+            an existing food are created automatically, as are substitute foods named
+            but not found. Set to False to have the tool refuse the update and return
+            the unmatched names instead (`unmatched_foods`,
+            `unmatched_substitute_foods`), so you can alias them onto existing foods
+            (mealie_foods_aliases_add), re-parse, and retry without creating duplicates.
+
+    Substitutions need Mealie 3.26.0 or later.
 
     Returns:
-        JSON string with updated recipe details
+        JSON string with updated recipe details, plus `created_foods` and
+        `created_units` (name -> id) for anything that was created, and
+        `saved_substitutions` (per line, with the resolved substitute food name)
+        when any line has substitutions, or a `warning` if substitutions were sent
+        but Mealie saved none (a server without substitution support)
 
     Example workflow:
         1. Parse ingredients:
@@ -400,7 +491,8 @@ def mealie_recipes_update_structured_ingredients(
     """
     return recipes_update_structured_ingredients(
         slug=slug,
-        parsed_ingredients=parsed_ingredients
+        parsed_ingredients=parsed_ingredients,
+        create_missing_foods=create_missing_foods
     )
 
 
@@ -1270,24 +1362,29 @@ def mealie_shopping_delete_recipe_from_list(item_id: str, recipe_id: str) -> str
 # -----------------------------------------------------------------------------
 
 @mcp.tool()
-def mealie_foods_list(page: int = 1, per_page: int = 50) -> str:
-    """List all foods with pagination.
+def mealie_foods_list(page: int = 1, per_page: int = 50, search: str | None = None) -> str:
+    """List foods with pagination and an optional name search.
 
     Args:
         page: Page number (1-indexed)
         per_page: Number of foods per page
+        search: Optional case-insensitive substring to match against the
+            food name (e.g. "onion"). Use this to find an existing
+            food before adding an alias to it.
 
     Returns:
         JSON string with paginated food list
     """
-    return foods_list(page=page, per_page=per_page)
+    return foods_list(page=page, per_page=per_page, search=search)
 
 
 @mcp.tool()
 def mealie_foods_create(
     name: str,
     description: str = None,
-    label_id: str = None
+    label_id: str = None,
+    aliases: list[str] | None = None,
+    substitutions: Substitutions | None = None
 ) -> str:
     """Create a new food.
 
@@ -1295,11 +1392,26 @@ def mealie_foods_create(
         name: Name for the new food
         description: Optional description
         label_id: Optional label ID (UUID) to assign
+        aliases: Optional alternate names the ingredient parser should match to
+            this food (e.g. ["scallions", "spring onions"] for "green onion")
+        substitutions: Optional standing substitutions for this food. Each entry
+            is a substitute food name, or a dict with `substitute_food` (a name or
+            {"id", "name"}; `food` also works) or `substitute_food_id`, plus an
+            optional `note`, e.g.
+            [{"substitute_food": "vegan block", "note": "dairy-free"}]. A note on
+            its own is also allowed; unknown keys are an error. Named substitute
+            foods must already exist (matched by name, plural name or alias).
 
     Returns:
         JSON string with created food details
     """
-    return foods_create(name=name, description=description, label_id=label_id)
+    return foods_create(
+        name=name,
+        description=description,
+        label_id=label_id,
+        aliases=aliases,
+        substitutions=substitutions
+    )
 
 
 @mcp.tool()
@@ -1310,7 +1422,8 @@ def mealie_foods_get(food_id: str) -> str:
         food_id: The food's ID
 
     Returns:
-        JSON string with food details
+        JSON string with food details, including `aliases` and the food's standing
+        `substitutions` as {substituteFoodId, substituteFood: {id, name, pluralName}, note}
     """
     return foods_get(food_id=food_id)
 
@@ -1320,7 +1433,9 @@ def mealie_foods_update(
     food_id: str,
     name: str | None = None,
     description: str | None = None,
-    label_id: str | None = None
+    label_id: str | None = None,
+    aliases: list[str] | None = None,
+    substitutions: Substitutions | None = None
 ) -> str:
     """Update an existing food.
 
@@ -1329,11 +1444,27 @@ def mealie_foods_update(
         name: New name for the food
         description: New description
         label_id: Label ID (UUID) to assign to the food
+        aliases: Replacement alias list, overwriting any existing aliases.
+            Pass an empty list to clear them, or omit to leave them alone.
+            To add or drop individual aliases use mealie_foods_aliases_add /
+            mealie_foods_aliases_remove instead.
+        substitutions: Replacement list of standing substitutions, overwriting any
+            existing ones. Pass an empty list to clear them, or omit to leave them
+            alone. Same entry shape as mealie_foods_create. To add or drop
+            individual substitutions use mealie_foods_substitutions_add /
+            mealie_foods_substitutions_remove instead.
 
     Returns:
         JSON string with updated food details
     """
-    return foods_update(food_id=food_id, name=name, description=description, label_id=label_id)
+    return foods_update(
+        food_id=food_id,
+        name=name,
+        description=description,
+        label_id=label_id,
+        aliases=aliases,
+        substitutions=substitutions
+    )
 
 
 @mcp.tool()
@@ -1364,24 +1495,28 @@ def mealie_foods_merge(from_food_id: str, to_food_id: str) -> str:
 
 
 @mcp.tool()
-def mealie_units_list(page: int = 1, per_page: int = 50) -> str:
-    """List all units with pagination.
+def mealie_units_list(page: int = 1, per_page: int = 50, search: str | None = None) -> str:
+    """List units with pagination and an optional name search.
 
     Args:
         page: Page number (1-indexed)
         per_page: Number of units per page
+        search: Optional case-insensitive substring to match against the
+            unit name (e.g. "tablespoon"). Use this to find an existing
+            unit before adding an alias to it.
 
     Returns:
         JSON string with paginated unit list
     """
-    return units_list(page=page, per_page=per_page)
+    return units_list(page=page, per_page=per_page, search=search)
 
 
 @mcp.tool()
 def mealie_units_create(
     name: str,
     description: str = None,
-    abbreviation: str = None
+    abbreviation: str = None,
+    aliases: list[str] | None = None
 ) -> str:
     """Create a new unit.
 
@@ -1389,11 +1524,18 @@ def mealie_units_create(
         name: Name for the new unit
         description: Optional description
         abbreviation: Optional abbreviation (e.g., "tsp", "oz")
+        aliases: Optional alternate names the ingredient parser should match to
+            this unit (e.g. ["tblsp", "T"] for "tablespoon")
 
     Returns:
         JSON string with created unit details
     """
-    return units_create(name=name, description=description, abbreviation=abbreviation)
+    return units_create(
+        name=name,
+        description=description,
+        abbreviation=abbreviation,
+        aliases=aliases
+    )
 
 
 @mcp.tool()
@@ -1414,7 +1556,8 @@ def mealie_units_update(
     unit_id: str,
     name: str | None = None,
     description: str | None = None,
-    abbreviation: str | None = None
+    abbreviation: str | None = None,
+    aliases: list[str] | None = None
 ) -> str:
     """Update an existing unit.
 
@@ -1423,11 +1566,21 @@ def mealie_units_update(
         name: New name for the unit
         description: New description
         abbreviation: New abbreviation
+        aliases: Replacement alias list, overwriting any existing aliases.
+            Pass an empty list to clear them, or omit to leave them alone.
+            To add or drop individual aliases use mealie_units_aliases_add /
+            mealie_units_aliases_remove instead.
 
     Returns:
         JSON string with updated unit details
     """
-    return units_update(unit_id=unit_id, name=name, description=description, abbreviation=abbreviation)
+    return units_update(
+        unit_id=unit_id,
+        name=name,
+        description=description,
+        abbreviation=abbreviation,
+        aliases=aliases
+    )
 
 
 @mcp.tool()
@@ -1455,6 +1608,154 @@ def mealie_units_merge(from_unit_id: str, to_unit_id: str) -> str:
         JSON string with merge results
     """
     return units_merge(from_unit_id=from_unit_id, to_unit_id=to_unit_id)
+
+
+# -----------------------------------------------------------------------------
+# Ingredient Alias Management Tools (Foods & Units)
+# -----------------------------------------------------------------------------
+
+@mcp.tool()
+def mealie_foods_aliases_list(food_id: str) -> str:
+    """List the aliases registered for a food.
+
+    Aliases are alternate names the Mealie ingredient parser will match to this
+    food, so a recipe calling for "scallions" resolves to "green onion".
+
+    Args:
+        food_id: The food's ID
+
+    Returns:
+        JSON string with the food's id, name and alias list
+    """
+    return foods_aliases_list(food_id=food_id)
+
+
+@mcp.tool()
+def mealie_foods_aliases_add(food_id: str, aliases: list[str]) -> str:
+    """Add one or more aliases to a food, keeping the existing ones.
+
+    Aliases the food already has are ignored (compared case-insensitively), so
+    this is safe to call repeatedly.
+
+    Args:
+        food_id: The food's ID
+        aliases: Alias names to add (e.g. ["scallions", "spring onions"])
+
+    Returns:
+        JSON string with the resulting alias list
+    """
+    return foods_aliases_add(food_id=food_id, aliases=aliases)
+
+
+@mcp.tool()
+def mealie_foods_aliases_remove(food_id: str, aliases: list[str]) -> str:
+    """Remove one or more aliases from a food.
+
+    Alias names are matched case-insensitively. Names the food does not have
+    are ignored.
+
+    Args:
+        food_id: The food's ID
+        aliases: Alias names to remove
+
+    Returns:
+        JSON string with the remaining alias list
+    """
+    return foods_aliases_remove(food_id=food_id, aliases=aliases)
+
+
+@mcp.tool()
+def mealie_foods_substitutions_add(food_id: str, substitutions: Substitutions) -> str:
+    """Add one or more standing substitutions to a food, keeping the existing ones.
+
+    A food's substitutions are the "may be replaced by" options Mealie offers
+    wherever the food is used, e.g. butter -> vegan block. Needs Mealie 3.26.0
+    or later.
+
+    Args:
+        food_id: The food's ID
+        substitutions: Substitutions to add. Each entry is a substitute food name,
+            or a dict with `substitute_food` (a name or {"id", "name"}; `food` also
+            works) or `substitute_food_id`, plus an optional `note`; a note on its
+            own is also allowed, and unknown keys are an error. Named foods must
+            already exist (matched by name, plural name or alias). A substitute the
+            food already has keeps its place, and its note is replaced only if a
+            new one is given, so this is safe to call repeatedly.
+
+    Returns:
+        JSON string with the resulting substitution list, including each
+        substitute food's resolved name
+    """
+    return foods_substitutions_add(food_id=food_id, substitutions=substitutions)
+
+
+@mcp.tool()
+def mealie_foods_substitutions_remove(food_id: str, substitutions: Substitutions) -> str:
+    """Remove one or more standing substitutions from a food.
+
+    Args:
+        food_id: The food's ID
+        substitutions: Substitutions to remove. An entry naming a substitute food
+            (a name, or a dict with `substitute_food`, `food` or
+            `substitute_food_id`) removes that food's substitution whatever its
+            note; names match case-insensitively against food names, plural names
+            and aliases. A note-only entry ({"note": "..."}) removes note-only
+            substitutions with that note. Entries that match nothing are ignored.
+
+    Returns:
+        JSON string with the remaining substitution list
+    """
+    return foods_substitutions_remove(food_id=food_id, substitutions=substitutions)
+
+
+@mcp.tool()
+def mealie_units_aliases_list(unit_id: str) -> str:
+    """List the aliases registered for a unit.
+
+    Aliases are alternate names the Mealie ingredient parser will match to this
+    unit, so a recipe calling for "tblsp" resolves to "tablespoon".
+
+    Args:
+        unit_id: The unit's ID
+
+    Returns:
+        JSON string with the unit's id, name and alias list
+    """
+    return units_aliases_list(unit_id=unit_id)
+
+
+@mcp.tool()
+def mealie_units_aliases_add(unit_id: str, aliases: list[str]) -> str:
+    """Add one or more aliases to a unit, keeping the existing ones.
+
+    Aliases the unit already has are ignored (compared case-insensitively), so
+    this is safe to call repeatedly.
+
+    Args:
+        unit_id: The unit's ID
+        aliases: Alias names to add (e.g. ["tblsp", "T"])
+
+    Returns:
+        JSON string with the resulting alias list
+    """
+    return units_aliases_add(unit_id=unit_id, aliases=aliases)
+
+
+@mcp.tool()
+def mealie_units_aliases_remove(unit_id: str, aliases: list[str]) -> str:
+    """Remove one or more aliases from a unit.
+
+    Alias names are matched case-insensitively. Names the unit does not have
+    are ignored.
+
+    Args:
+        unit_id: The unit's ID
+        aliases: Alias names to remove
+
+    Returns:
+        JSON string with the remaining alias list
+    """
+    return units_aliases_remove(unit_id=unit_id, aliases=aliases)
 
 
 # -----------------------------------------------------------------------------

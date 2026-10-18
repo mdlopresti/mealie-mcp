@@ -15,6 +15,323 @@ import httpx
 from dotenv import load_dotenv
 
 
+def normalize_aliases(aliases: Optional[list]) -> list[Dict[str, str]]:
+    """Normalize an alias list into Mealie's ``[{"name": ...}]`` payload shape.
+
+    Mealie stores aliases on the food/unit object itself as a list of objects
+    with a single ``name`` field. Accepting bare strings keeps the tool layer
+    ergonomic while still producing a valid payload.
+
+    Args:
+        aliases: List of alias names (strings) and/or ``{"name": ...}`` dicts
+
+    Returns:
+        List of alias dicts, whitespace-trimmed and de-duplicated
+        case-insensitively while preserving the original order and casing
+
+    Raises:
+        ValueError: If an entry is neither a string nor a dict with a name
+    """
+    if not aliases:
+        return []
+
+    normalized: list[Dict[str, str]] = []
+    seen: set[str] = set()
+
+    for alias in aliases:
+        if isinstance(alias, str):
+            name = alias.strip()
+        elif isinstance(alias, dict):
+            name = str(alias.get("name", "")).strip()
+        else:
+            raise ValueError(
+                f"Alias must be a string or a dict with a 'name' key, got {type(alias).__name__}"
+            )
+
+        if not name:
+            raise ValueError("Alias names cannot be empty")
+
+        key = name.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        normalized.append({"name": name})
+
+    return normalized
+
+
+def alias_names(item: Dict[str, Any]) -> list[str]:
+    """Extract plain alias names from a food or unit object."""
+    return [
+        alias["name"]
+        for alias in (item.get("aliases") or [])
+        if isinstance(alias, dict) and alias.get("name")
+    ]
+
+
+def _merge_aliases(existing: list[str], to_add: list[Dict[str, str]]) -> list[Dict[str, str]]:
+    """Append normalized aliases to ``existing`` names, skipping case-insensitive duplicates."""
+    seen = {name.casefold() for name in existing}
+    merged = [{"name": name} for name in existing]
+    for alias in to_add:
+        if alias["name"].casefold() not in seen:
+            seen.add(alias["name"].casefold())
+            merged.append(alias)
+    return merged
+
+
+def _drop_aliases(existing: list[str], to_remove: list[Dict[str, str]]) -> list[Dict[str, str]]:
+    """Drop normalized aliases from ``existing`` names, matching case-insensitively."""
+    drop = {alias["name"].casefold() for alias in to_remove}
+    return [{"name": name} for name in existing if name.casefold() not in drop]
+
+
+SUBSTITUTIONS_NOT_SAVED_WARNING = (
+    "Substitutions were sent but Mealie returned none. The server may be running a "
+    "Mealie version without ingredient substitution support."
+)
+
+
+# Keys a substitution entry may use. ``food`` mirrors the key an ingredient
+# line uses for its own food; the camelCase ones are what Mealie returns.
+SUBSTITUTION_FOOD_ID_KEYS = ("substitute_food_id", "substituteFoodId")
+SUBSTITUTION_FOOD_KEYS = ("substitute_food", "substituteFood", "food")
+SUBSTITUTION_KEYS = frozenset(SUBSTITUTION_FOOD_ID_KEYS + SUBSTITUTION_FOOD_KEYS + ("note",))
+
+
+def _substitute_food_ref(key: str, value: Any) -> tuple[Optional[str], Optional[str]]:
+    """Read ``(id, name)`` from a ``substitute_food``-style value.
+
+    ``None`` and ``""`` mean "not given". A dict must carry an ``id`` or a
+    ``name``; other keys on it (such as a full food object) are ignored.
+    """
+    if value is None:
+        return None, None
+    if isinstance(value, str):
+        return None, value.strip() or None
+    if isinstance(value, dict):
+        food_id = value.get("id") or None
+        name = str(value.get("name") or "").strip() or None
+        if not food_id and not name:
+            raise ValueError(f"Substitution '{key}' must include an 'id' or a 'name'")
+        return (str(food_id) if food_id else None), name
+    raise ValueError(
+        f"Substitution '{key}' must be a food name or a dict with an 'id' or 'name', "
+        f"got {type(value).__name__}"
+    )
+
+
+def normalize_substitutions(substitutions: Optional[list]) -> list[Dict[str, Optional[str]]]:
+    """Validate substitution entries and reduce them to ``{food_id, food_name, note}``.
+
+    Mealie stores a substitution as a substitute food ID, a free-text note, or
+    both. Each entry here may be:
+
+    - a plain string, taken as the substitute food's name
+    - a dict using only these keys:
+        - ``substitute_food`` (or ``food``, or Mealie's ``substituteFood``): a
+          food name, or a ``{"id": ..., "name": ...}`` dict
+        - ``substitute_food_id`` (or Mealie's ``substituteFoodId``)
+        - ``note``
+
+    Any other key is an error rather than being ignored, so a misspelt key
+    can never turn a food substitution into a note-only one. Keys that point
+    at different foods are an error too.
+
+    Names still need resolving to IDs (see ``resolve_substitutions``); this
+    function only validates, so it can run before any request is made.
+
+    Raises:
+        ValueError: If an entry is malformed or has neither a food nor a note
+    """
+    if not substitutions:
+        return []
+
+    normalized: list[Dict[str, Optional[str]]] = []
+    for sub in substitutions:
+        food_id: Optional[str] = None
+        food_name: Optional[str] = None
+        note: Optional[str] = None
+
+        if isinstance(sub, str):
+            food_name = sub.strip() or None
+        elif isinstance(sub, dict):
+            unknown = sorted(str(key) for key in set(sub) - SUBSTITUTION_KEYS)
+            if unknown:
+                raise ValueError(
+                    f"Unknown substitution key(s): {', '.join(unknown)}. Use "
+                    "substitute_food (a name or {\"id\", \"name\"}; 'food' also works), "
+                    "substitute_food_id and/or note."
+                )
+
+            ids: list[tuple[str, str]] = []
+            names: list[tuple[str, str]] = []
+            for key in SUBSTITUTION_FOOD_ID_KEYS:
+                value = sub.get(key)
+                if value is None or value == "":
+                    continue
+                if not isinstance(value, str):
+                    raise ValueError(f"Substitution '{key}' must be a string ID")
+                ids.append((key, value.strip()))
+            for key in SUBSTITUTION_FOOD_KEYS:
+                ref_id, ref_name = _substitute_food_ref(key, sub.get(key))
+                if ref_id:
+                    ids.append((key, ref_id))
+                if ref_name:
+                    names.append((key, ref_name))
+
+            if len({value for _, value in ids}) > 1:
+                raise ValueError(
+                    "Substitution keys point at different foods: "
+                    + ", ".join(f"{key}={value}" for key, value in ids)
+                )
+            if not ids and len({value.casefold() for _, value in names}) > 1:
+                raise ValueError(
+                    "Substitution keys name different foods: "
+                    + ", ".join(f"{key}={value!r}" for key, value in names)
+                )
+            food_id = ids[0][1] if ids else None
+            food_name = names[0][1] if names else None
+
+            raw_note = sub.get("note")
+            if raw_note is not None and not isinstance(raw_note, str):
+                raise ValueError("Substitution note must be a string")
+            note = (raw_note or "").strip() or None
+        else:
+            raise ValueError(
+                f"Substitution must be a food name or a dict, got {type(sub).__name__}"
+            )
+
+        if not food_id and not food_name and not note:
+            raise ValueError("A substitution needs a substitute food, a note, or both")
+
+        normalized.append({
+            "food_id": food_id,
+            "food_name": food_name,
+            "note": note,
+        })
+
+    return normalized
+
+
+def food_name_index(foods: list[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    """Map case-folded food names, plural names and aliases to ``{id, name}``.
+
+    Names win over plural names, which win over aliases, so an alias on one
+    food never shadows another food's real name.
+    """
+    index: Dict[str, Dict[str, Any]] = {}
+    for keys in (
+        lambda f: [f.get("name")],
+        lambda f: [f.get("pluralName")],
+        alias_names,
+    ):
+        for food in foods:
+            if not food.get("id"):
+                continue
+            for key in keys(food):
+                if key and key.strip().casefold() not in index:
+                    index[key.strip().casefold()] = {"id": food["id"], "name": food.get("name")}
+    return index
+
+
+def resolve_substitutions(
+    substitutions: list[Dict[str, Optional[str]]],
+    index: Dict[str, Dict[str, Any]]
+) -> tuple[list[Dict[str, Optional[str]]], list[str]]:
+    """Turn normalized substitutions into Mealie payload entries.
+
+    Args:
+        substitutions: Output of ``normalize_substitutions``
+        index: Output of ``food_name_index``, used for entries given by name
+
+    Returns:
+        ``(payload, unmatched)``: the ``{"substituteFoodId", "note"}`` entries
+        Mealie accepts, and the food names that matched no existing food
+        (those entries are left out of the payload). A substitute food that
+        appears twice keeps its first entry, as Mealie itself would.
+    """
+    payload: list[Dict[str, Optional[str]]] = []
+    unmatched: list[str] = []
+    seen: set[str] = set()
+    for sub in substitutions:
+        food_id = sub["food_id"]
+        if not food_id and sub["food_name"]:
+            match = index.get(sub["food_name"].casefold())
+            if not match or not match.get("id"):
+                if sub["food_name"] not in unmatched:
+                    unmatched.append(sub["food_name"])
+                continue
+            food_id = match["id"]
+        if food_id:
+            if food_id in seen:
+                continue
+            seen.add(food_id)
+        payload.append({"substituteFoodId": food_id, "note": sub["note"]})
+    return payload, unmatched
+
+
+def substitutions_need_lookup(substitutions: list[Dict[str, Optional[str]]]) -> bool:
+    """Whether any normalized substitution names a food without giving its ID."""
+    return any(sub["food_name"] and not sub["food_id"] for sub in substitutions)
+
+
+def substitution_summary(item: Dict[str, Any]) -> list[Dict[str, Any]]:
+    """Flatten a food's or ingredient line's substitutions for display.
+
+    Returns ``[{"substitute_food_id", "substitute_food", "note"}]``, where
+    ``substitute_food`` is the resolved food name Mealie returned, if any.
+    """
+    summary = []
+    for sub in item.get("substitutions") or []:
+        if not isinstance(sub, dict):
+            continue
+        food = sub.get("substituteFood") or {}
+        summary.append({
+            "substitute_food_id": sub.get("substituteFoodId") or food.get("id"),
+            "substitute_food": food.get("name"),
+            "note": sub.get("note"),
+        })
+    return summary
+
+
+def _existing_substitutions(food: Dict[str, Any]) -> list[Dict[str, Optional[str]]]:
+    """A food's current substitutions as payload entries."""
+    return [
+        {"substituteFoodId": sub["substitute_food_id"], "note": sub["note"]}
+        for sub in substitution_summary(food)
+    ]
+
+
+def _merge_substitutions(
+    existing: list[Dict[str, Optional[str]]],
+    to_add: list[Dict[str, Optional[str]]]
+) -> list[Dict[str, Optional[str]]]:
+    """Add substitutions to ``existing``.
+
+    A substitute food that is already present has its note replaced when the
+    new entry carries one. A note-only entry is skipped if the same note
+    (case-insensitively) is already there.
+    """
+    merged = [dict(sub) for sub in existing]
+    for sub in to_add:
+        if sub["substituteFoodId"]:
+            current = next(
+                (m for m in merged if m["substituteFoodId"] == sub["substituteFoodId"]), None
+            )
+            if current is None:
+                merged.append(dict(sub))
+            elif sub["note"]:
+                current["note"] = sub["note"]
+        else:
+            note = (sub["note"] or "").casefold()
+            if not any(
+                not m["substituteFoodId"] and (m["note"] or "").casefold() == note for m in merged
+            ):
+                merged.append(dict(sub))
+    return merged
+
+
 # Error message templates for common status codes
 _ERROR_TEMPLATES = {
     422: {
@@ -526,7 +843,9 @@ class MealieClient:
         self,
         name: str,
         description: Optional[str] = None,
-        label_id: Optional[str] = None
+        label_id: Optional[str] = None,
+        aliases: Optional[list] = None,
+        substitutions: Optional[list] = None
     ) -> Dict[str, Any]:
         """
         Create a new food item.
@@ -535,25 +854,36 @@ class MealieClient:
             name: The food name
             description: Optional description
             label_id: Optional label ID (UUID) to assign
+            aliases: Optional alternate names the ingredient parser should
+                recognize for this food (e.g. ["scallions"] for "green onion")
+            substitutions: Optional standing substitutions for this food; see
+                ``normalize_substitutions`` for the accepted entry shapes.
+                Substitute foods given by name must already exist.
 
         Returns:
             Created food data with id
 
         Raises:
+            ValueError: If a substitution is malformed or names an unknown food
             MealieAPIError: If creation fails
         """
-        payload = {"name": name}
+        payload: Dict[str, Any] = {"name": name}
         if description is not None:
             payload["description"] = description
         if label_id is not None:
             payload["labelId"] = label_id
+        if aliases is not None:
+            payload["aliases"] = normalize_aliases(aliases)
+        if substitutions is not None:
+            payload["substitutions"] = self.substitution_payload(substitutions)
         return self.post("/api/foods", json=payload)
 
     def create_unit(
         self,
         name: str,
         description: Optional[str] = None,
-        abbreviation: Optional[str] = None
+        abbreviation: Optional[str] = None,
+        aliases: Optional[list] = None
     ) -> Dict[str, Any]:
         """
         Create a new measurement unit.
@@ -562,6 +892,8 @@ class MealieClient:
             name: The unit name
             description: Optional description
             abbreviation: Optional abbreviation (e.g., "tsp", "oz")
+            aliases: Optional alternate names the ingredient parser should
+                recognize for this unit (e.g. ["tblsp"] for "tablespoon")
 
         Returns:
             Created unit data with id
@@ -574,6 +906,8 @@ class MealieClient:
             payload["description"] = description
         if abbreviation is not None:
             payload["abbreviation"] = abbreviation
+        if aliases is not None:
+            payload["aliases"] = normalize_aliases(aliases)
         return self.post("/api/units", json=payload)
 
     def update_recipe_ingredients(self, slug: str, ingredients: list[Dict[str, Any]]) -> Dict[str, Any]:
@@ -588,6 +922,7 @@ class MealieClient:
                 - food: dict with id and name, or just name string (nullable)
                 - note: string (nullable)
                 - display: string for human-readable format
+                - substitutions: list of {"substituteFoodId", "note"} (optional)
 
         Returns:
             Updated recipe data
@@ -884,9 +1219,24 @@ class MealieClient:
     # Foods & Units Management
     # -------------------------------------------------------------------------
 
-    def list_foods(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
-        """List all foods with pagination."""
-        params = {"page": page, "perPage": per_page}
+    def list_foods(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        search: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """List foods with pagination and an optional name search.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of foods per page
+            search: Optional search string; Mealie matches it against the
+                name (case-insensitive substring), which makes it the quickest
+                way to find an existing food before adding an alias to it
+        """
+        params: Dict[str, Any] = {"page": page, "perPage": per_page}
+        if search:
+            params["search"] = search
         return self.get("/api/foods", params=params)
 
     def get_food(self, food_id: str) -> Dict[str, Any]:
@@ -898,7 +1248,9 @@ class MealieClient:
         food_id: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        label_id: Optional[str] = None
+        label_id: Optional[str] = None,
+        aliases: Optional[list] = None,
+        substitutions: Optional[list] = None
     ) -> Dict[str, Any]:
         """Update an existing food.
 
@@ -907,14 +1259,29 @@ class MealieClient:
             name: New name for the food
             description: New description
             label_id: New label ID (UUID) to assign to the food
+            aliases: Replacement alias list. Pass ``[]`` to clear all aliases,
+                or omit to leave the existing aliases untouched.
+            substitutions: Replacement substitution list. Pass ``[]`` to clear
+                them, or omit to leave them untouched. Substitute foods given
+                by name must already exist.
 
         Returns:
             Updated food object
+
+        Raises:
+            ValueError: If a substitution is malformed or names an unknown food
 
         Note:
             The Mealie API requires PUT with the full food object.
             This method fetches the current food first, then updates it.
         """
+        # Validate input before making any request
+        new_aliases = normalize_aliases(aliases) if aliases is not None else None
+        new_substitutions = (
+            self.substitution_payload(substitutions, food_id=food_id)
+            if substitutions is not None else None
+        )
+
         # GET current food to preserve all fields
         current_food = self.get(f"/api/foods/{food_id}")
 
@@ -925,8 +1292,154 @@ class MealieClient:
             current_food["description"] = description
         if label_id is not None:
             current_food["labelId"] = label_id
+        if new_aliases is not None:
+            current_food["aliases"] = new_aliases
+        if new_substitutions is not None:
+            current_food["substitutions"] = new_substitutions
 
         # PUT the complete updated object
+        return self.put(f"/api/foods/{food_id}", json=current_food)
+
+    def get_food_aliases(self, food_id: str) -> list[str]:
+        """List the alias names currently registered for a food."""
+        return alias_names(self.get(f"/api/foods/{food_id}"))
+
+    def add_food_aliases(self, food_id: str, aliases: list) -> Dict[str, Any]:
+        """Add aliases to a food, preserving any that already exist.
+
+        Aliases already present (compared case-insensitively) are skipped, so
+        this is safe to call repeatedly.
+
+        Args:
+            food_id: The food's ID
+            aliases: Alias names to add
+
+        Returns:
+            Updated food object
+        """
+        to_add = normalize_aliases(aliases)  # validate before any request
+        current_food = self.get(f"/api/foods/{food_id}")
+        current_food["aliases"] = _merge_aliases(alias_names(current_food), to_add)
+        return self.put(f"/api/foods/{food_id}", json=current_food)
+
+    def remove_food_aliases(self, food_id: str, aliases: list) -> Dict[str, Any]:
+        """Remove aliases from a food, matching names case-insensitively.
+
+        Args:
+            food_id: The food's ID
+            aliases: Alias names to remove
+
+        Returns:
+            Updated food object
+        """
+        to_remove = normalize_aliases(aliases)  # validate before any request
+        current_food = self.get(f"/api/foods/{food_id}")
+        current_food["aliases"] = _drop_aliases(alias_names(current_food), to_remove)
+        return self.put(f"/api/foods/{food_id}", json=current_food)
+
+    def list_all_foods(self) -> list[Dict[str, Any]]:
+        """Fetch every food in one request (``perPage=-1``)."""
+        result = self.get("/api/foods", params={"page": 1, "perPage": -1})
+        return result.get("items", []) if isinstance(result, dict) else result
+
+    def get_food_name_index(self) -> Dict[str, Dict[str, Any]]:
+        """Map every food's name, plural name and aliases to its ``{id, name}``."""
+        return food_name_index(self.list_all_foods())
+
+    def substitution_payload(
+        self,
+        substitutions: list,
+        food_id: Optional[str] = None
+    ) -> list[Dict[str, Optional[str]]]:
+        """Validate substitutions and resolve food names, for a food payload.
+
+        Entries are validated before any request is made, and the food list is
+        only fetched when an entry names a food without its ID.
+
+        Args:
+            substitutions: Substitution entries (see ``normalize_substitutions``)
+            food_id: The food being updated, if any, to reject it as its own
+                substitute before Mealie does
+
+        Raises:
+            ValueError: If an entry is malformed, names a food that does not
+                exist (substitutes are never created implicitly here), or
+                makes the food a substitute for itself
+        """
+        normalized = normalize_substitutions(substitutions)
+        if food_id and any(sub["food_id"] == food_id for sub in normalized):
+            raise ValueError("A food cannot be substituted with itself")
+        index = self.get_food_name_index() if substitutions_need_lookup(normalized) else {}
+        payload, unmatched = resolve_substitutions(normalized, index)
+        if unmatched:
+            raise ValueError(
+                "No existing food matches substitute food name(s): "
+                + ", ".join(unmatched)
+                + ". Create the food first, alias the name onto an existing food, "
+                "or pass substitute_food_id."
+            )
+        if food_id and any(sub["substituteFoodId"] == food_id for sub in payload):
+            raise ValueError("A food cannot be substituted with itself")
+        return payload
+
+    def add_food_substitutions(self, food_id: str, substitutions: list) -> Dict[str, Any]:
+        """Add substitutions to a food, preserving the existing ones.
+
+        A substitute food the food already has keeps its place; its note is
+        replaced only when the new entry has one. Repeated note-only entries
+        are skipped, so this is safe to call repeatedly.
+
+        Args:
+            food_id: The food's ID
+            substitutions: Substitutions to add
+
+        Returns:
+            Updated food object
+        """
+        to_add = self.substitution_payload(substitutions, food_id=food_id)
+        current_food = self.get(f"/api/foods/{food_id}")
+        current_food["substitutions"] = _merge_substitutions(
+            _existing_substitutions(current_food), to_add
+        )
+        return self.put(f"/api/foods/{food_id}", json=current_food)
+
+    def remove_food_substitutions(self, food_id: str, substitutions: list) -> Dict[str, Any]:
+        """Remove substitutions from a food.
+
+        An entry with a substitute food (by ID, or by name, plural name or
+        alias, case-insensitively) removes that food's substitution whatever
+        its note. A note-only entry removes note-only substitutions with the
+        same note. Entries that match nothing are ignored.
+
+        Args:
+            food_id: The food's ID
+            substitutions: Substitutions to remove
+
+        Returns:
+            Updated food object
+        """
+        to_remove = normalize_substitutions(substitutions)  # validate before any request
+        current_food = self.get(f"/api/foods/{food_id}")
+        index = self.get_food_name_index() if substitutions_need_lookup(to_remove) else {}
+
+        def matches(sub: Dict[str, Any], target: Dict[str, Optional[str]]) -> bool:
+            if target["food_id"]:
+                return sub["substitute_food_id"] == target["food_id"]
+            if target["food_name"]:
+                name = target["food_name"].casefold()
+                resolved = index.get(name, {}).get("id")
+                return bool(resolved and sub["substitute_food_id"] == resolved) or (
+                    (sub["substitute_food"] or "").casefold() == name
+                )
+            return not sub["substitute_food_id"] and (
+                (sub["note"] or "").casefold() == (target["note"] or "").casefold()
+            )
+
+        current_food["substitutions"] = [
+            {"substituteFoodId": sub["substitute_food_id"], "note": sub["note"]}
+            for sub in substitution_summary(current_food)
+            if not any(matches(sub, target) for target in to_remove)
+        ]
         return self.put(f"/api/foods/{food_id}", json=current_food)
 
     def delete_food(self, food_id: str) -> None:
@@ -941,9 +1454,24 @@ class MealieClient:
         }
         return self.post("/api/foods/merge", json=payload)
 
-    def list_units(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
-        """List all units with pagination."""
-        params = {"page": page, "perPage": per_page}
+    def list_units(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        search: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """List units with pagination and an optional name search.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Number of units per page
+            search: Optional search string; Mealie matches it against the
+                name (case-insensitive substring), which makes it the quickest
+                way to find an existing unit before adding an alias to it
+        """
+        params: Dict[str, Any] = {"page": page, "perPage": per_page}
+        if search:
+            params["search"] = search
         return self.get("/api/units", params=params)
 
     def get_unit(self, unit_id: str) -> Dict[str, Any]:
@@ -955,18 +1483,79 @@ class MealieClient:
         unit_id: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        abbreviation: Optional[str] = None
+        abbreviation: Optional[str] = None,
+        aliases: Optional[list] = None
     ) -> Dict[str, Any]:
-        """Update an existing unit."""
-        payload = {}
-        if name is not None:
-            payload["name"] = name
-        if description is not None:
-            payload["description"] = description
-        if abbreviation is not None:
-            payload["abbreviation"] = abbreviation
+        """Update an existing unit.
 
-        return self.patch(f"/api/units/{unit_id}", json=payload)
+        Args:
+            unit_id: The unit's ID
+            name: New name for the unit
+            description: New description
+            abbreviation: New abbreviation (e.g., "tsp", "oz")
+            aliases: Replacement alias list. Pass ``[]`` to clear all aliases,
+                or omit to leave the existing aliases untouched.
+
+        Returns:
+            Updated unit object
+
+        Note:
+            ``/api/units/{id}`` only supports PUT with the full unit object, so
+            this method fetches the current unit first and merges into it. A
+            partial PATCH drops every field that is not sent.
+        """
+        # Validate input before making any request
+        new_aliases = normalize_aliases(aliases) if aliases is not None else None
+
+        current_unit = self.get(f"/api/units/{unit_id}")
+
+        if name is not None:
+            current_unit["name"] = name
+        if description is not None:
+            current_unit["description"] = description
+        if abbreviation is not None:
+            current_unit["abbreviation"] = abbreviation
+        if new_aliases is not None:
+            current_unit["aliases"] = new_aliases
+
+        return self.put(f"/api/units/{unit_id}", json=current_unit)
+
+    def get_unit_aliases(self, unit_id: str) -> list[str]:
+        """List the alias names currently registered for a unit."""
+        return alias_names(self.get(f"/api/units/{unit_id}"))
+
+    def add_unit_aliases(self, unit_id: str, aliases: list) -> Dict[str, Any]:
+        """Add aliases to a unit, preserving any that already exist.
+
+        Aliases already present (compared case-insensitively) are skipped, so
+        this is safe to call repeatedly.
+
+        Args:
+            unit_id: The unit's ID
+            aliases: Alias names to add
+
+        Returns:
+            Updated unit object
+        """
+        to_add = normalize_aliases(aliases)  # validate before any request
+        current_unit = self.get(f"/api/units/{unit_id}")
+        current_unit["aliases"] = _merge_aliases(alias_names(current_unit), to_add)
+        return self.put(f"/api/units/{unit_id}", json=current_unit)
+
+    def remove_unit_aliases(self, unit_id: str, aliases: list) -> Dict[str, Any]:
+        """Remove aliases from a unit, matching names case-insensitively.
+
+        Args:
+            unit_id: The unit's ID
+            aliases: Alias names to remove
+
+        Returns:
+            Updated unit object
+        """
+        to_remove = normalize_aliases(aliases)  # validate before any request
+        current_unit = self.get(f"/api/units/{unit_id}")
+        current_unit["aliases"] = _drop_aliases(alias_names(current_unit), to_remove)
+        return self.put(f"/api/units/{unit_id}", json=current_unit)
 
     def delete_unit(self, unit_id: str) -> None:
         """Delete a unit."""
