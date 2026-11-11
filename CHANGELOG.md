@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Food label tools: `mealie_labels_list`, `mealie_labels_create`, `mealie_labels_get`, `mealie_labels_update`, `mealie_labels_delete`
+- Backup tools (admin token required): `mealie_backups_list`, `mealie_backups_create`, `mealie_backups_get_download_url`, `mealie_backups_delete`. Restore is intentionally not exposed.
+- `mealie_foods_list` gains `search`, `order_by`, `order_direction`, `query_filter` (e.g. `labelId IS NULL`) and `slim` (compact items for large food lists)
+
 ## [1.9.0] - 2026-11-11
 
 ### Added

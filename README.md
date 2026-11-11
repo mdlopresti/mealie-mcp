@@ -17,7 +17,7 @@ It can run three ways:
 
 ## Features
 
-### Tools (116 total; highlights below)
+### Tools (125 total; highlights below)
 
 **Recipes**
 - `mealie_recipes_search` - Search recipes by name, tags, or categories
@@ -51,6 +51,15 @@ It can run three ways:
 - `mealie_shopping_add_recipe` - Add recipe ingredients to list
 - `mealie_shopping_generate_from_mealplan` - Generate shopping list from meal plan
 - `mealie_shopping_clear_checked` - Clear all checked items
+
+**Foods & Labels**
+- `mealie_foods_list` - List foods with `search`, `query_filter` (e.g. `labelId IS NULL`) and a compact `slim` view
+- `mealie_foods_merge` - Merge a duplicate food into another
+- `mealie_labels_list` / `_create` / `_update` / `_delete` - Manage the labels that group foods on shopping lists
+
+**Backups** (admin token)
+- `mealie_backups_create` - Create a full Mealie backup before large changes
+- `mealie_backups_list` / `_get_download_url` / `_delete` - Manage existing backups (restore stays in Mealie's UI)
 
 **Ingredient Parsing**
 - `mealie_parser_ingredient` - Parse single ingredient string to structured format
