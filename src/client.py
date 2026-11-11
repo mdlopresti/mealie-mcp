@@ -7,6 +7,7 @@ Includes error handling, retry logic, and connection testing.
 
 import json
 import os
+from urllib.parse import quote
 import time
 from typing import Any, Dict, Optional, Union
 from urllib.parse import urljoin
@@ -884,9 +885,34 @@ class MealieClient:
     # Foods & Units Management
     # -------------------------------------------------------------------------
 
-    def list_foods(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
-        """List all foods with pagination."""
-        params = {"page": page, "perPage": per_page}
+    def list_foods(
+        self,
+        page: int = 1,
+        per_page: int = 50,
+        search: Optional[str] = None,
+        order_by: Optional[str] = None,
+        order_direction: Optional[str] = None,
+        query_filter: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """List foods with pagination, optional search, ordering and filtering.
+
+        Args:
+            page: Page number (1-indexed)
+            per_page: Items per page
+            search: Free-text search on food name/aliases
+            order_by: Field to order by (e.g. "name", "createdAt")
+            order_direction: "asc" or "desc"
+            query_filter: Mealie query filter, e.g. 'labelId IS NULL'
+        """
+        params: Dict[str, Any] = {"page": page, "perPage": per_page}
+        if search:
+            params["search"] = search
+        if order_by:
+            params["orderBy"] = order_by
+        if order_direction:
+            params["orderDirection"] = order_direction
+        if query_filter:
+            params["queryFilter"] = query_filter
         return self.get("/api/foods", params=params)
 
     def get_food(self, food_id: str) -> Dict[str, Any]:
@@ -940,6 +966,64 @@ class MealieClient:
             "toFood": to_food_id
         }
         return self.post("/api/foods/merge", json=payload)
+
+    # -------------------------------------------------------------------------
+    # Labels (group-level; used to group foods on shopping lists)
+    # -------------------------------------------------------------------------
+
+    def list_labels(
+        self, page: int = 1, per_page: int = 100, search: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """List food labels."""
+        params: Dict[str, Any] = {"page": page, "perPage": per_page}
+        if search:
+            params["search"] = search
+        return self.get("/api/groups/labels", params=params)
+
+    def create_label(self, name: str, color: str = "#959595") -> Dict[str, Any]:
+        """Create a food label."""
+        return self.post("/api/groups/labels", json={"name": name, "color": color})
+
+    def get_label(self, label_id: str) -> Dict[str, Any]:
+        """Get a food label by ID."""
+        return self.get(f"/api/groups/labels/{label_id}")
+
+    def update_label(
+        self, label_id: str, name: Optional[str] = None, color: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Update a food label (fetches the current label, then PUTs it back)."""
+        current = self.get(f"/api/groups/labels/{label_id}")
+        payload = {
+            "id": current.get("id", label_id),
+            "groupId": current.get("groupId"),
+            "name": name if name is not None else current.get("name"),
+            "color": color if color is not None else current.get("color", "#959595"),
+        }
+        return self.put(f"/api/groups/labels/{label_id}", json=payload)
+
+    def delete_label(self, label_id: str) -> Any:
+        """Delete a food label. Foods using it become unlabeled."""
+        return self.delete(f"/api/groups/labels/{label_id}")
+
+    # -------------------------------------------------------------------------
+    # Backups (admin only)
+    # -------------------------------------------------------------------------
+
+    def list_backups(self) -> Dict[str, Any]:
+        """List backup files on the Mealie server."""
+        return self.get("/api/admin/backups")
+
+    def create_backup(self) -> Any:
+        """Create a new backup on the Mealie server."""
+        return self.post("/api/admin/backups")
+
+    def get_backup_token(self, file_name: str) -> Dict[str, Any]:
+        """Get a one-time download token for a backup file."""
+        return self.get(f"/api/admin/backups/{quote(file_name)}")
+
+    def delete_backup(self, file_name: str) -> Any:
+        """Delete a backup file from the Mealie server."""
+        return self.delete(f"/api/admin/backups/{quote(file_name)}")
 
     def list_units(self, page: int = 1, per_page: int = 50) -> Dict[str, Any]:
         """List all units with pagination."""

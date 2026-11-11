@@ -1,13 +1,23 @@
 # Mealie MCP Server
 
-[![Build and Push Docker Image](https://github.com/mdlopresti/mealie-mcp/actions/workflows/docker.yml/badge.svg)](https://github.com/mdlopresti/mealie-mcp/actions/workflows/docker.yml)
-[![Test](https://github.com/mdlopresti/mealie-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/mdlopresti/mealie-mcp/actions/workflows/test.yml)
+[![Home Assistant App](https://github.com/warinthestars/mealie-mcp/actions/workflows/ha-addon.yml/badge.svg)](https://github.com/warinthestars/mealie-mcp/actions/workflows/ha-addon.yml)
+[![Build and Push Docker Image](https://github.com/warinthestars/mealie-mcp/actions/workflows/docker.yml/badge.svg)](https://github.com/warinthestars/mealie-mcp/actions/workflows/docker.yml)
 
 A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that enables AI assistants to interact with [Mealie](https://mealie.io/) for recipe management, meal planning, and shopping lists.
 
+It can run three ways:
+
+| | Best for | How clients connect |
+| --- | --- | --- |
+| **[Home Assistant app](#option-1-home-assistant-app)** | Home Assistant OS/Supervised users, especially with Mealie installed as an app too | HTTP: `http://<ha-ip>:8099/mcp` |
+| **[Docker, stdio](#option-2-docker-stdio)** | A single client (Claude Code / Claude Desktop) on the same computer | The client starts the container itself |
+| **[Docker, HTTP](#option-3-docker-http-server)** | A shared server for several clients or machines | HTTP: `http://<host>:8099/mcp` |
+
+> This repository is a fork of [mdlopresti/mealie-mcp](https://github.com/mdlopresti/mealie-mcp) that adds the Home Assistant app and HTTP transport.
+
 ## Features
 
-### Tools (31 total)
+### Tools (125 total; highlights below)
 
 **Recipes**
 - `mealie_recipes_search` - Search recipes by name, tags, or categories
@@ -42,6 +52,15 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - `mealie_shopping_generate_from_mealplan` - Generate shopping list from meal plan
 - `mealie_shopping_clear_checked` - Clear all checked items
 
+**Foods & Labels**
+- `mealie_foods_list` - List foods with `search`, `query_filter` (e.g. `labelId IS NULL`) and a compact `slim` view
+- `mealie_foods_merge` - Merge a duplicate food into another
+- `mealie_labels_list` / `_create` / `_update` / `_delete` - Manage the labels that group foods on shopping lists
+
+**Backups** (admin token)
+- `mealie_backups_create` - Create a full Mealie backup before large changes
+- `mealie_backups_list` / `_get_download_url` / `_delete` - Manage existing backups (restore stays in Mealie's UI)
+
 **Ingredient Parsing**
 - `mealie_parser_ingredient` - Parse single ingredient string to structured format
 - `mealie_parser_ingredients_batch` - Parse multiple ingredient strings at once
@@ -56,39 +75,44 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that e
 - `shopping://lists` - All shopping lists
 - `shopping://{list_id}` - Specific shopping list
 
-## Prerequisites
+## Before you start
 
-- Docker (or Podman)
-- A running Mealie instance
-- Mealie API token
+You need a running Mealie instance (v1.0+) and a **Mealie API token**:
 
-## Quick Start
+1. Log into Mealie as the user the assistant should act as.
+2. Click your avatar → **API Tokens** (`/user/profile/api-tokens`).
+3. Create a token (e.g. "MCP Server") and copy it immediately. It's only shown once.
 
-### 1. Get the Docker Image
+## Option 1: Home Assistant app
 
-**Option A: Pull from GitHub Container Registry (recommended)**
+1. **Settings → Apps → App store → ⋮ → Repositories**, add `https://github.com/warinthestars/mealie-mcp`.
+2. Install **Mealie MCP Server** and open its **Configuration** tab:
+   - `mealie_url`: how the app reaches Mealie. **If Mealie is an app on the same Home Assistant**, use its internal hostname and container port, e.g. `http://db21ed7f-mealie:9001` for the alexbelgium Mealie app. Not `localhost`, `mealie.local` or an Ingress URL.
+   - `mealie_api_token`: the token from above.
+   - `mcp_auth_token`: a long letters-and-digits password that clients must send as a bearer token.
+3. Start the app and check its **Log** tab.
+4. Connect a client:
+   - **Claude Desktop (LAN):** use `mcp-remote` in `claude_desktop_config.json`.
+   - **Claude custom connector:** needs a public HTTPS URL, e.g. via the Cloudflared app.
+   - **Claude Code:** `claude mcp add --transport http ...`
+   - **Home Assistant Assist:** Model Context Protocol integration.
+
+**Full step-by-step instructions, client configs and troubleshooting:
+[mealie_mcp/DOCS.md](mealie_mcp/DOCS.md)** (also shown on the app's Documentation tab in Home Assistant).
+
+> It's a Home Assistant **app** (add-on), installed from the app store, not HACS.
+
+## Option 2: Docker, stdio
+
+The MCP client launches the container for each session and talks to it over stdin/stdout.
+
 ```bash
-docker pull ghcr.io/mdlopresti/mealie-mcp:latest
+docker pull ghcr.io/warinthestars/mealie-mcp:latest
+# or build it yourself:
+git clone https://github.com/warinthestars/mealie-mcp.git && cd mealie-mcp && docker build -t mealie-mcp:latest .
 ```
 
-**Option B: Build from source**
-```bash
-git clone https://github.com/mdlopresti/mealie-mcp.git
-cd mealie-mcp
-docker build -t mealie-mcp:latest .
-```
-
-### 2. Get Your API Token
-
-1. Log into your Mealie instance
-2. Go to **User Settings** (click your name in sidebar)
-3. Navigate to **API Tokens**
-4. Create a new token (e.g., "MCP Server")
-5. Copy the token immediately (it won't be shown again)
-
-### 3. Configure Claude Code
-
-Add to `.mcp.json` in your project root:
+**Claude Code**: add to `.mcp.json` in your project root:
 
 ```json
 {
@@ -99,29 +123,49 @@ Add to `.mcp.json` in your project root:
         "run", "-i", "--rm",
         "-e", "MEALIE_URL=https://your-mealie-instance.com",
         "-e", "MEALIE_API_TOKEN=your-api-token-here",
-        "ghcr.io/mdlopresti/mealie-mcp:latest"
+        "ghcr.io/warinthestars/mealie-mcp:latest"
       ]
     }
   }
 }
 ```
 
-Then add `mealie` to your `~/.claude/settings.json`:
+**Claude Desktop**: put the same `mealie` block in `claude_desktop_config.json`
+(**Settings → Developer → Edit Config**) and fully restart Claude Desktop.
 
-```json
-{
-  "allowedMcpServers": [
-    { "serverName": "mealie" }
-  ]
-}
+Then ask: *"Can you search for recipes in Mealie?"*
+
+## Option 3: Docker, HTTP server
+
+Run one long-lived server that any number of clients can share:
+
+```bash
+docker run -d --name mealie-mcp --restart unless-stopped -p 8099:8099 \
+  -e MCP_TRANSPORT=http \
+  -e MEALIE_URL=http://192.168.1.50:9925 \
+  -e MEALIE_API_TOKEN=your-api-token \
+  -e MCP_AUTH_TOKEN=$(openssl rand -hex 32) \
+  ghcr.io/warinthestars/mealie-mcp:latest
 ```
 
-### 4. Test the Connection
+Clients connect to `http://<host>:8099/mcp` with the header
+`Authorization: Bearer <MCP_AUTH_TOKEN>`. See
+[connecting clients](mealie_mcp/DOCS.md#5-connect-an-ai-client) for Claude
+Desktop, custom connector and Claude Code configs. They're the same as for the
+Home Assistant app.
 
-Restart Claude Code and try:
-```
-Can you search for recipes in Mealie?
-```
+## Configuration reference
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `MEALIE_URL` | (required) | Mealie base URL, no trailing slash |
+| `MEALIE_API_TOKEN` | (required) | Mealie API token |
+| `MCP_TRANSPORT` | `stdio` | `stdio` or `http` (the Home Assistant app always uses `http`) |
+| `MCP_HOST` | `0.0.0.0` | HTTP bind address |
+| `MCP_PORT` | `8099` | HTTP port |
+| `MCP_PATH` | `/mcp` | HTTP endpoint path |
+| `MCP_AUTH_TOKEN` | (empty) | Bearer token required on every HTTP request; empty disables auth |
+| `MCP_LOG_LEVEL` | `info` | HTTP server log level |
 
 ## Usage Examples
 
@@ -259,11 +303,13 @@ mealie-mcp/
 - **Never commit API tokens** - Use environment variables
 - The API token has full access to your Mealie account
 - Consider creating a dedicated Mealie user for the MCP server
+- In HTTP mode, always set `MCP_AUTH_TOKEN` (`mcp_auth_token` in the app). Anyone with network access and the token can read and modify your Mealie data
+- Only publish the HTTP endpoint to the internet (e.g. for Claude custom connectors) over HTTPS with a token set
 
 ## Requirements
 
 - Python 3.12+
-- Mealie v1.0+ (tested with v3.6.1)
+- Mealie v1.0+ (tested with v3.6.1 and v3.30.0)
 
 ## License
 
@@ -271,22 +317,10 @@ MIT
 
 ## Contributing
 
-Contributions welcome! Please open an issue or PR.
+Contributions welcome! Please open an issue or PR. Maintainers and AI agents: see [docs/FORK_MAINTENANCE.md](docs/FORK_MAINTENANCE.md) for syncing upstream and releasing.
 
 ## Related
 
 - [Mealie](https://mealie.io/) - Self-hosted recipe manager
 - [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification
 - [FastMCP](https://github.com/jlowin/fastmcp) - Python MCP framework
-
-## Home Assistant App
-
-This repository is also a Home Assistant app repository. The app runs the server over streamable HTTP on port `8099` (`/mcp`) with optional bearer-token auth.
-
-1. In Home Assistant go to **Settings > Apps > App store**, open the menu (top right) > **Repositories**, and add `https://github.com/warinthestars/mealie-mcp`.
-2. Install **Mealie MCP Server**, fill in `mealie_url`, `mealie_api_token` and (recommended) `mcp_auth_token`, then start it.
-3. Point MCP clients at `http://<ha-host>:8099/mcp`.
-
-The app image is built for amd64 and aarch64 by `.github/workflows/ha-addon.yml` from `vX.Y.Z` release tags only and published to `ghcr.io/warinthestars/mealie-mcp-addon:X.Y.Z`. Home Assistant offers an update when the `version` in `mealie_mcp/config.yaml` changes, and shows the changelog in the update dialog. Releases are cut with `python scripts/release.py bump patch|minor|major`, which updates CHANGELOG.md, `config.yaml` and `__version__` together. See [mealie_mcp/DOCS.md](mealie_mcp/DOCS.md) for details.
-
-The HTTP transport can also be used outside Home Assistant: set `MCP_TRANSPORT=http` (plus optional `MCP_PORT`, `MCP_AUTH_TOKEN`).

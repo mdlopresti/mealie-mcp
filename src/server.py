@@ -132,6 +132,19 @@ from tools.comments import (
     comments_update,
     comments_delete,
 )
+from tools.labels import (
+    labels_list,
+    labels_create,
+    labels_get,
+    labels_update,
+    labels_delete,
+)
+from tools.backups import (
+    backups_list,
+    backups_create,
+    backups_get_download_url,
+    backups_delete,
+)
 from tools.webhooks import (
     webhooks_list,
     webhooks_create,
@@ -1270,17 +1283,41 @@ def mealie_shopping_delete_recipe_from_list(item_id: str, recipe_id: str) -> str
 # -----------------------------------------------------------------------------
 
 @mcp.tool()
-def mealie_foods_list(page: int = 1, per_page: int = 50) -> str:
-    """List all foods with pagination.
+def mealie_foods_list(
+    page: int = 1,
+    per_page: int = 50,
+    search: str | None = None,
+    order_by: str | None = None,
+    order_direction: str | None = None,
+    query_filter: str | None = None,
+    slim: bool = False,
+) -> str:
+    """List foods with pagination, optional search/filter, and an optional slim view.
+
+    Full food objects are large (~650 KB per 1000 foods). Use slim=True when browsing
+    or auditing, and search/query_filter to narrow results.
 
     Args:
         page: Page number (1-indexed)
         per_page: Number of foods per page
+        search: Free-text search on food name and aliases (e.g. "pepper")
+        order_by: Field to order by (e.g. "name", "createdAt")
+        order_direction: "asc" or "desc"
+        query_filter: Mealie query filter, e.g. 'labelId IS NULL' for unlabeled foods
+        slim: Return only id, name, pluralName, aliases, labelId, label, createdAt
 
     Returns:
         JSON string with paginated food list
     """
-    return foods_list(page=page, per_page=per_page)
+    return foods_list(
+        page=page,
+        per_page=per_page,
+        search=search,
+        order_by=order_by,
+        order_direction=order_direction,
+        query_filter=query_filter,
+        slim=slim,
+    )
 
 
 @mcp.tool()
@@ -1975,6 +2012,132 @@ def mealie_timeline_update_image(event_id: str, image_url: str) -> str:
         )
     """
     return timeline_update_image(event_id=event_id, image_url=image_url)
+
+
+# =============================================================================
+# Food Labels (FORK)
+# =============================================================================
+
+@mcp.tool()
+def mealie_labels_list(page: int = 1, per_page: int = 100, search: str | None = None) -> str:
+    """List food labels (the groups foods are sorted into on shopping lists).
+
+    Args:
+        page: Page number (1-indexed)
+        per_page: Labels per page (default 100)
+        search: Optional name search
+
+    Returns:
+        JSON string with id, name and color for each label
+    """
+    return labels_list(page=page, per_page=per_page, search=search)
+
+
+@mcp.tool()
+def mealie_labels_create(name: str, color: str = "#959595") -> str:
+    """Create a food label.
+
+    Args:
+        name: Label name (e.g. "Produce")
+        color: Hex color shown in the UI (default "#959595")
+
+    Returns:
+        JSON string with the created label
+    """
+    return labels_create(name=name, color=color)
+
+
+@mcp.tool()
+def mealie_labels_get(label_id: str) -> str:
+    """Get a food label by ID.
+
+    Args:
+        label_id: The label's ID (UUID)
+
+    Returns:
+        JSON string with label details
+    """
+    return labels_get(label_id=label_id)
+
+
+@mcp.tool()
+def mealie_labels_update(label_id: str, name: str | None = None, color: str | None = None) -> str:
+    """Rename or recolor a food label.
+
+    Args:
+        label_id: The label's ID (UUID)
+        name: New name
+        color: New hex color
+
+    Returns:
+        JSON string with the updated label
+    """
+    return labels_update(label_id=label_id, name=name, color=color)
+
+
+@mcp.tool()
+def mealie_labels_delete(label_id: str) -> str:
+    """Delete a food label. Foods that used it become unlabeled.
+
+    Args:
+        label_id: The label's ID (UUID)
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return labels_delete(label_id=label_id)
+
+
+# =============================================================================
+# Backups (FORK, admin token required)
+# =============================================================================
+
+@mcp.tool()
+def mealie_backups_list() -> str:
+    """List backup files stored on the Mealie server. Requires an admin API token.
+
+    Returns:
+        JSON string with each backup's name, date and size
+    """
+    return backups_list()
+
+
+@mcp.tool()
+def mealie_backups_create() -> str:
+    """Create a full backup on the Mealie server. Requires an admin API token.
+
+    Run this before bulk deletes, merges or other large cleanups.
+
+    Returns:
+        JSON string confirming the backup was created
+    """
+    return backups_create()
+
+
+@mcp.tool()
+def mealie_backups_get_download_url(file_name: str) -> str:
+    """Get a short-lived download URL for a backup file. Requires an admin API token.
+
+    Args:
+        file_name: Backup file name as returned by mealie_backups_list
+
+    Returns:
+        JSON string with download_url
+    """
+    return backups_get_download_url(file_name=file_name)
+
+
+@mcp.tool()
+def mealie_backups_delete(file_name: str) -> str:
+    """Delete a backup file from the Mealie server. Requires an admin API token.
+
+    Args:
+        file_name: Backup file name as returned by mealie_backups_list
+
+    Returns:
+        JSON string confirming deletion
+    """
+    return backups_delete(file_name=file_name)
 
 
 # =============================================================================

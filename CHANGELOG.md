@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Food label tools: `mealie_labels_list`, `mealie_labels_create`, `mealie_labels_get`, `mealie_labels_update`, `mealie_labels_delete`
+- Backup tools (admin token required): `mealie_backups_list`, `mealie_backups_create`, `mealie_backups_get_download_url`, `mealie_backups_delete`. Restore is intentionally not exposed.
+- `mealie_foods_list` gains `search`, `order_by`, `order_direction`, `query_filter` (e.g. `labelId IS NULL`) and `slim` (compact items for large food lists)
+
 ## [1.9.0] - 2026-11-11
 
 ### Added
@@ -17,10 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MCP protocol test framework and unit test utilities
 - Fork maintenance guide for LLM agents (`docs/FORK_MAINTENANCE.md`, `AGENTS.md`, `/sync-upstream` and `/release` commands) covering upstream syncs, base-image updates, custom changes and releases
 - Dependabot now also tracks the Home Assistant app's base image
+- Detailed Home Assistant setup guide (app Documentation tab): choosing the Mealie URL when Mealie runs as an app on the same Home Assistant, token guidance, and client setup for Claude Desktop, Claude custom connectors (via Cloudflared), Claude Code and Home Assistant Assist
+- README now covers all three ways to run the server (Home Assistant app, Docker stdio, Docker HTTP) with a configuration reference
 
 ### Changed
 - App images are now built only from `vX.Y.Z` git tags and published as `ghcr.io/warinthestars/mealie-mcp-addon:X.Y.Z`, so Home Assistant updates follow released versions instead of every commit
 - Minimum FastMCP version raised to 2.3.2; `uvicorn` added as a dependency
+
+### Fixed
+- OAuth discovery requests (`/.well-known/...`) now return 404 instead of 401, so Claude custom connectors use the configured bearer header instead of asking to sign in
 
 ## [1.8.2] - 2025-12-23
 

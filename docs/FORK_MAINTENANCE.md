@@ -60,7 +60,7 @@ where the file format allows comments:**
 | `requirements.txt` | `fastmcp>=2.3.2`, `uvicorn>=0.30.0` | Keep the higher of upstream's and the fork's minimums. Never drop `uvicorn`. |
 | `src/__init__.py` | `__version__ = "X.Y.Z"` | Always keep the **fork's** value. |
 | `CHANGELOG.md` | Fork release sections (1.9.0+), fork link refs | See section 3, step 4. |
-| `README.md` | "Home Assistant App" section at the end | Keep the section, take upstream's other edits. |
+| `README.md` | Intro run-options table, "Before you start" / Option 1-3 / Configuration reference sections (replacing upstream's Prerequisites + Quick Start), fork badges, Security bullets | Keep the fork's install/run sections; take upstream's edits to Features, Usage Examples and Development. Update the tool count. |
 | `CLAUDE.md` | Pointer to this file at top; "Version Management" rewritten | Keep both fork blocks, take upstream's other edits. |
 | `.github/dependabot.yml` | Extra docker entry for `/mealie_mcp` | Keep it. |
 

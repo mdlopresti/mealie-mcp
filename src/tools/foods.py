@@ -24,19 +24,61 @@ except ImportError:
 # Foods Management
 # -----------------------------------------------------------------------------
 
-def foods_list(page: int = 1, per_page: int = 50) -> str:
-    """List all foods with pagination.
+def _slim_food(food: dict) -> dict:
+    """Reduce a food object to the fields useful for browsing and cleanup."""
+    label = food.get("label") or {}
+    return {
+        "id": food.get("id"),
+        "name": food.get("name"),
+        "pluralName": food.get("pluralName"),
+        "aliases": [a.get("name") for a in (food.get("aliases") or [])],
+        "labelId": food.get("labelId"),
+        "label": label.get("name"),
+        "createdAt": food.get("createdAt"),
+    }
+
+
+def foods_list(
+    page: int = 1,
+    per_page: int = 50,
+    search: Optional[str] = None,
+    order_by: Optional[str] = None,
+    order_direction: Optional[str] = None,
+    query_filter: Optional[str] = None,
+    slim: bool = False,
+) -> str:
+    """List foods with pagination, optional search/filter, and an optional slim view.
 
     Args:
         page: Page number (1-indexed)
         per_page: Number of foods per page
+        search: Free-text search on food name/aliases
+        order_by: Field to order by (e.g. "name", "createdAt")
+        order_direction: "asc" or "desc"
+        query_filter: Mealie query filter, e.g. 'labelId IS NULL'
+        slim: Return only id, name, pluralName, aliases, labelId, label, createdAt
 
     Returns:
         JSON string with paginated food list
     """
     try:
         with MealieClient() as client:
-            result = client.list_foods(page, per_page)
+            result = client.list_foods(
+                page,
+                per_page,
+                search=search,
+                order_by=order_by,
+                order_direction=order_direction,
+                query_filter=query_filter,
+            )
+            if slim and isinstance(result, dict):
+                result = {
+                    "page": result.get("page"),
+                    "per_page": result.get("per_page"),
+                    "total": result.get("total"),
+                    "total_pages": result.get("total_pages"),
+                    "items": [_slim_food(x) for x in result.get("items", [])],
+                }
             return json.dumps(result, indent=2)
 
     except MealieAPIError as e:
