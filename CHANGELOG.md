@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-11-11
+
 ### Added
 - Food label tools: `mealie_labels_list`, `mealie_labels_create`, `mealie_labels_get`, `mealie_labels_update`, `mealie_labels_delete`
 - Backup tools (admin token required): `mealie_backups_list`, `mealie_backups_create`, `mealie_backups_get_download_url`, `mealie_backups_delete`. Restore is intentionally not exposed.
@@ -689,6 +691,7 @@ mealie_recipes_update_structured_ingredients(
 - GitHub Actions CI/CD for automated builds
 - Published to GitHub Container Registry (ghcr.io)
 
+[1.10.0]: https://github.com/warinthestars/mealie-mcp/releases/tag/v1.10.0
 [1.9.0]: https://github.com/warinthestars/mealie-mcp/releases/tag/v1.9.0
 [1.8.2]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.8.2
 [1.8.1]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.8.1
