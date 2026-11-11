@@ -287,6 +287,6 @@ This repository is also a Home Assistant app repository. The app runs the server
 2. Install **Mealie MCP Server**, fill in `mealie_url`, `mealie_api_token` and (recommended) `mcp_auth_token`, then start it.
 3. Point MCP clients at `http://<ha-host>:8099/mcp`.
 
-The app image is built for amd64 and aarch64 by `.github/workflows/ha-addon.yml` and published to `ghcr.io/warinthestars/mealie-mcp-addon`. Bump `version` in `mealie_mcp/config.yaml` to release an update. See [mealie_mcp/DOCS.md](mealie_mcp/DOCS.md) for details.
+The app image is built for amd64 and aarch64 by `.github/workflows/ha-addon.yml` from `vX.Y.Z` release tags only and published to `ghcr.io/warinthestars/mealie-mcp-addon:X.Y.Z`. Home Assistant offers an update when the `version` in `mealie_mcp/config.yaml` changes, and shows the changelog in the update dialog. Releases are cut with `python scripts/release.py bump patch|minor|major`, which updates CHANGELOG.md, `config.yaml` and `__version__` together. See [mealie_mcp/DOCS.md](mealie_mcp/DOCS.md) for details.
 
 The HTTP transport can also be used outside Home Assistant: set `MCP_TRANSPORT=http` (plus optional `MCP_PORT`, `MCP_AUTH_TOKEN`).

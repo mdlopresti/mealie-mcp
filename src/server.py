@@ -2515,6 +2515,7 @@ def resource_shopping_list_detail(list_id: str) -> str:
 # Server entry point
 # =============================================================================
 
+# FORK: main() with HTTP transport is fork-specific (Home Assistant app); keep it when merging upstream.
 def main() -> None:
     """Run over stdio (default) or HTTP when MCP_TRANSPORT=http."""
     transport = os.getenv("MCP_TRANSPORT", "stdio").lower()

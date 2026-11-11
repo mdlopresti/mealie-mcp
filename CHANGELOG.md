@@ -7,7 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-11-11
+
 ### Added
+- Home Assistant app: this repository can be added to the Home Assistant app store (`repository.yaml` + `mealie_mcp/`), running the server as a long-lived container for amd64 and aarch64
+- Streamable HTTP transport (`MCP_TRANSPORT=http`) with configurable host, port and path (`MCP_HOST`, `MCP_PORT`, `MCP_PATH`)
+- Optional bearer-token authentication for the HTTP endpoint (`MCP_AUTH_TOKEN`)
+- Semantic-version release tooling (`scripts/release.py`) keeping CHANGELOG.md, the app's `config.yaml` and `src/__init__.py` in sync, with a generated app changelog shown in Home Assistant's update dialog
+- MCP protocol test framework and unit test utilities
+- Fork maintenance guide for LLM agents (`docs/FORK_MAINTENANCE.md`, `AGENTS.md`, `/sync-upstream` and `/release` commands) covering upstream syncs, base-image updates, custom changes and releases
+- Dependabot now also tracks the Home Assistant app's base image
+
+### Changed
+- App images are now built only from `vX.Y.Z` git tags and published as `ghcr.io/warinthestars/mealie-mcp-addon:X.Y.Z`, so Home Assistant updates follow released versions instead of every commit
+- Minimum FastMCP version raised to 2.3.2; `uvicorn` added as a dependency
+
+## [1.8.2] - 2025-12-23
+
+### Added
+- Added webhooks management MCP tools (Batch 2 - Phase 2.1)
 - Added event notifications management with 6 new MCP tools (Batch 2 - Phase 2.3)
 - Added `mealie_notifications_list` tool to list all event notifications with pagination
 - Added `mealie_notifications_create` tool to create Apprise-based notifications for Mealie events
@@ -52,6 +70,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `list_shared_recipes`, `create_shared_recipe`, `get_shared_recipe`, `delete_shared_recipe`, and `access_shared_recipe` methods to MealieClient
 - Added comprehensive test coverage with 20 unit tests for shared recipe operations
 - Added support for optional expiration dates when creating share links
+
+## [1.8.1] - 2025-12-23
+
+### Added
+- Testing infrastructure foundations plus MCP server/resource tests, E2E workflow tests and 211 unit tests
+
+### Fixed
+- Added missing HTTP mocks for bulk operation tests
 
 ## [1.8.0] - 2025-12-23
 
@@ -653,6 +679,9 @@ mealie_recipes_update_structured_ingredients(
 - GitHub Actions CI/CD for automated builds
 - Published to GitHub Container Registry (ghcr.io)
 
+[1.9.0]: https://github.com/warinthestars/mealie-mcp/releases/tag/v1.9.0
+[1.8.2]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.8.2
+[1.8.1]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.8.1
 [1.8.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.8.0
 [1.7.2]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.7.2
 [1.3.0]: https://github.com/mdlopresti/mealie-mcp/releases/tag/v1.3.0

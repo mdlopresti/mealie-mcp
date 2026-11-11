@@ -1,4 +1,5 @@
 # FastMCP - Model Context Protocol framework
+# FORK: >=2.3.2 required for http_app(middleware=...) used by src/http_transport.py
 fastmcp>=2.3.2
 
 # HTTP client for Mealie API
@@ -15,5 +16,5 @@ pytest-asyncio>=0.21.0
 # Required by fastmcp and other dependencies
 PyYAML>=6.0.1
 
-# ASGI server for HTTP transport (Home Assistant app / container mode)
+# FORK: ASGI server for HTTP transport (Home Assistant app / container mode)
 uvicorn>=0.30.0

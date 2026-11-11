@@ -14,6 +14,8 @@ from pathlib import Path
 
 OPTIONS_FILE = Path("/data/options.json")
 
+print(f"Mealie MCP Server app v{os.environ.get('APP_VERSION', 'dev')}", flush=True)
+
 if OPTIONS_FILE.exists():
     opts = json.loads(OPTIONS_FILE.read_text())
     mapping = {

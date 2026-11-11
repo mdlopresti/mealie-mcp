@@ -3,11 +3,14 @@
 #   docker build -f mealie_mcp/Dockerfile .
 FROM python:3.12-slim
 
+ARG BUILD_VERSION=dev
+
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     MCP_TRANSPORT=http \
     MCP_HOST=0.0.0.0 \
-    MCP_PORT=8099
+    MCP_PORT=8099 \
+    APP_VERSION=${BUILD_VERSION}
 
 WORKDIR /app
 
@@ -21,6 +24,7 @@ EXPOSE 8099
 
 LABEL io.hass.type="addon" \
       io.hass.name="Mealie MCP Server" \
-      io.hass.arch="amd64|aarch64"
+      io.hass.arch="amd64|aarch64" \
+      io.hass.version="${BUILD_VERSION}"
 
 CMD ["python", "/app/run.py"]

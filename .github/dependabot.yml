@@ -32,3 +32,14 @@ updates:
     labels:
       - "dependencies"
       - "docker"
+
+  # FORK: Home Assistant app base image
+  - package-ecosystem: "docker"
+    directory: "/mealie_mcp"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+      - "docker"

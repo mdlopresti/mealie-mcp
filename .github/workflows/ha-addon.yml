@@ -1,20 +1,53 @@
-name: Build Home Assistant App Image
+name: Home Assistant App
+
+# Home Assistant offers an update whenever mealie_mcp/config.yaml `version`
+# changes and pulls ghcr.io/<owner>/mealie-mcp-addon:<version>. Images are
+# therefore built ONLY from release tags (vX.Y.Z), never from plain commits.
+# Cut a release with: python scripts/release.py bump patch|minor|major
 
 on:
   push:
+    tags: ['v*.*.*']
+  pull_request:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'requirements.txt'
-      - 'mealie_mcp/**'
-      - '.github/workflows/ha-addon.yml'
   workflow_dispatch:
 
 env:
   IMAGE: ghcr.io/${{ github.repository_owner }}/mealie-mcp-addon
 
 jobs:
+  version-check:
+    name: Version consistency
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Python
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
+        with:
+          python-version: '3.12'
+
+      - name: Check CHANGELOG, config.yaml and __version__ agree
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            python scripts/release.py check --tag "$GITHUB_REF_NAME"
+          else
+            python scripts/release.py check
+          fi
+
+      - name: Read version
+        id: version
+        run: echo "version=$(python scripts/release.py version)" >> "$GITHUB_OUTPUT"
+
   build:
+    name: Build and push app image
+    needs: version-check
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,12 +56,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Read app version from config.yaml
-        id: version
+      - name: Compute semver tags
+        id: tags
         run: |
-          VERSION=$(grep -E '^version:' mealie_mcp/config.yaml | sed -E 's/version:[[:space:]]*"?([^"]+)"?/\1/')
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "App version: $VERSION"
+          V="${{ needs.version-check.outputs.version }}"
+          TAGS="${IMAGE}:${V}"
+          # Stable releases also move X.Y and latest; pre-releases (X.Y.Z-rc.1) do not.
+          if [[ "$V" != *-* ]]; then
+            TAGS="${TAGS},${IMAGE}:${V%.*},${IMAGE}:latest"
+          fi
+          echo "tags=$TAGS" >> "$GITHUB_OUTPUT"
+          echo "Publishing: $TAGS"
+
+      - name: Refuse to overwrite an existing release image
+        run: |
+          if docker manifest inspect "${IMAGE}:${{ needs.version-check.outputs.version }}" >/dev/null 2>&1; then
+            echo "::error::${IMAGE}:${{ needs.version-check.outputs.version }} already exists. Bump the version with scripts/release.py."
+            exit 1
+          fi
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -50,8 +95,12 @@ jobs:
           file: mealie_mcp/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
-            ${{ env.IMAGE }}:latest
+          build-args: |
+            BUILD_VERSION=${{ needs.version-check.outputs.version }}
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.version=${{ needs.version-check.outputs.version }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            io.hass.version=${{ needs.version-check.outputs.version }}
           cache-from: type=gha,scope=ha-addon
           cache-to: type=gha,mode=max,scope=ha-addon

@@ -1,5 +1,10 @@
 # Mealie MCP Server
 
+> **FORK:** This is warinthestars/mealie-mcp, a fork of mdlopresti/mealie-mcp with a Home Assistant app.
+> Before syncing upstream, updating dependencies/base image, or releasing, read
+> [`docs/FORK_MAINTENANCE.md`](docs/FORK_MAINTENANCE.md). It overrides this file on git remotes,
+> versioning, image names and deployment.
+
 This directory contains the Mealie MCP (Model Context Protocol) server implementation.
 
 ## Development
@@ -173,10 +178,22 @@ for tag in sorted(by_tag.keys()):
 
 ## Version Management
 
-- Use semantic versioning (MAJOR.MINOR.PATCH)
-- Update CHANGELOG.md with each release
-- Tag releases in git: `git tag v1.x.x && git push --tags`
-- Build and push Docker image with version tag
+- Use semantic versioning (MAJOR.MINOR.PATCH); one version for the server and the Home Assistant app
+- Add every user-facing change under `## [Unreleased]` in CHANGELOG.md as part of its PR
+- Never edit version numbers by hand. `scripts/release.py` keeps these in sync:
+  - `CHANGELOG.md` (newest release section)
+  - `mealie_mcp/config.yaml` `version` (what Home Assistant reads to offer updates)
+  - `src/__init__.py` `__version__`
+  - `mealie_mcp/CHANGELOG.md` (generated copy shown in Home Assistant's update dialog)
+- Cutting a release:
+  ```bash
+  python scripts/release.py bump patch   # or minor / major / X.Y.Z
+  git checkout -b release/vX.Y.Z && git add -A && git commit -m "chore: release vX.Y.Z"
+  git push origin release/vX.Y.Z && gh pr create --fill   # CI runs `release.py check`
+  # after merge:
+  git checkout main && git pull && git tag vX.Y.Z && git push origin vX.Y.Z
+  ```
+- The tag push builds `ghcr.io/warinthestars/mealie-mcp-addon:X.Y.Z` (plus `X.Y` and `latest`) and creates the GitHub release. Commits to main without a tag do not change what Home Assistant installs.
 - Update parent project's `.mcp.json` to reference new version
 
 ## Deploying MCP Changes
