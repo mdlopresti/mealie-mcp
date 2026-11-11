@@ -165,7 +165,9 @@ def foods_update(
     food_id: str,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    label_id: Optional[str] = None
+    label_id: Optional[str] = None,
+    plural_name: Optional[str] = None,
+    aliases: Optional[list[str]] = None,
 ) -> str:
     """Update an existing food.
 
@@ -180,7 +182,7 @@ def foods_update(
     """
     try:
         with MealieClient() as client:
-            food = client.update_food(food_id, name, description, label_id)
+            food = client.update_food(food_id, name, description, label_id, plural_name, aliases)
             return json.dumps({
                 "success": True,
                 "message": "Food updated successfully",
@@ -368,7 +370,12 @@ def units_update(
     unit_id: str,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    abbreviation: Optional[str] = None
+    abbreviation: Optional[str] = None,
+    plural_name: Optional[str] = None,
+    plural_abbreviation: Optional[str] = None,
+    use_abbreviation: Optional[bool] = None,
+    fraction: Optional[bool] = None,
+    aliases: Optional[list[str]] = None,
 ) -> str:
     """Update an existing unit.
 
@@ -383,7 +390,7 @@ def units_update(
     """
     try:
         with MealieClient() as client:
-            unit = client.update_unit(unit_id, name, description, abbreviation)
+            unit = client.update_unit(unit_id, name, description, abbreviation, plural_name, plural_abbreviation, use_abbreviation, fraction, aliases)
             return json.dumps({
                 "success": True,
                 "message": "Unit updated successfully",

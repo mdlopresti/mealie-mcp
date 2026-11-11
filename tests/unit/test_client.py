@@ -787,7 +787,7 @@ class TestMealieClientFoodsAndUnits:
     @respx.mock
     def test_merge_foods(self):
         """Test merge_foods combines two foods."""
-        respx.post("https://test.example.com/api/foods/merge").mock(
+        respx.put("https://test.example.com/api/foods/merge").mock(
             return_value=Response(200, json={"success": True})
         )
 
@@ -813,7 +813,8 @@ class TestMealieClientFoodsAndUnits:
     def test_update_unit(self):
         """Test update_unit patches unit fields."""
         unit = build_unit(name="tablespoon", abbreviation="T")
-        respx.patch("https://test.example.com/api/units/unit-1").mock(
+        respx.get("https://test.example.com/api/units/unit-1").mock(return_value=Response(200, json={"id": "x", "name": "old", "groupId": "g"}))
+        respx.put("https://test.example.com/api/units/unit-1").mock(
             return_value=Response(200, json=unit)
         )
 
@@ -825,7 +826,7 @@ class TestMealieClientFoodsAndUnits:
     @respx.mock
     def test_merge_units(self):
         """Test merge_units combines two units."""
-        respx.post("https://test.example.com/api/units/merge").mock(
+        respx.put("https://test.example.com/api/units/merge").mock(
             return_value=Response(200, json={"success": True})
         )
 
@@ -873,7 +874,8 @@ class TestMealieClientOrganizers:
     def test_update_category(self):
         """Test update_category patches fields."""
         category = build_category(name="Main Dishes")
-        respx.patch("https://test.example.com/api/organizers/categories/cat-1").mock(
+        respx.get("https://test.example.com/api/organizers/categories/cat-1").mock(return_value=Response(200, json={"id": "x", "name": "old", "groupId": "g"}))
+        respx.put("https://test.example.com/api/organizers/categories/cat-1").mock(
             return_value=Response(200, json=category)
         )
 
@@ -1231,6 +1233,7 @@ class TestMealieClientAdditionalMethods:
     def test_update_cookbook(self):
         """Test update_cookbook updates cookbook fields."""
         cookbook = build_cookbook(name="Updated Cookbook", public=True)
+        respx.get("https://test.example.com/api/households/cookbooks/cookbook-1").mock(return_value=Response(200, json={"id": "x", "name": "old", "groupId": "g"}))
         respx.put("https://test.example.com/api/households/cookbooks/cookbook-1").mock(
             return_value=Response(200, json=cookbook)
         )
@@ -1332,7 +1335,8 @@ class TestMealieClientAdditionalMethods:
     def test_update_tag(self):
         """Test update_tag patches tag fields."""
         tag = build_tag(name="Plant-Based")
-        respx.patch("https://test.example.com/api/organizers/tags/tag-1").mock(
+        respx.get("https://test.example.com/api/organizers/tags/tag-1").mock(return_value=Response(200, json={"id": "x", "name": "old", "groupId": "g"}))
+        respx.put("https://test.example.com/api/organizers/tags/tag-1").mock(
             return_value=Response(200, json=tag)
         )
 
@@ -1358,7 +1362,8 @@ class TestMealieClientAdditionalMethods:
     def test_update_tool(self):
         """Test update_tool patches tool fields."""
         tool = build_tool(name="Food Processor")
-        respx.patch("https://test.example.com/api/organizers/tools/tool-1").mock(
+        respx.get("https://test.example.com/api/organizers/tools/tool-1").mock(return_value=Response(200, json={"id": "x", "name": "old", "groupId": "g"}))
+        respx.put("https://test.example.com/api/organizers/tools/tool-1").mock(
             return_value=Response(200, json=tool)
         )
 

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Full API coverage: `mealie_api_request` calls any Mealie endpoint; `mealie_api_endpoints` and `mealie_api_schema` discover endpoints and body shapes from the instance's live `/openapi.json`
+- `mealie_recipes_reparse`: parses a recipe's plain-text ingredient lines server-side, matches or creates foods, keeps low-confidence lines as text, fills servings from yield text, and returns a compact summary
+- `mealie_recipes_audit`: per-recipe data-quality flags (unparsed ingredients, missing image/description/category/tags/tools/servings/time/source)
+- `mealie_recipes_patch`: update any recipe field (settings, nutrition, servings, source URL, ...)
+- `mealie_recipes_set_tools`: assign kitchen tools to a recipe by name
+- `mealie_recipes_set_image_from_url` (Mealie downloads the image) and `mealie_recipes_fill_missing_images` (uses the recipe image from the recipe's own source page)
+- Cookbooks: `query_filter_string` and `position` on create/update
+- Foods: `plural_name` and `aliases` on update. Units: plural name/abbreviation, `use_abbreviation`, `fraction`, `aliases` on update
+
+### Fixed
+- Tag, category, tool and unit updates sent PATCH (405 from Mealie); they now GET the current object and PUT it
+- Food and unit merges sent POST (405); they now use PUT
+- Cookbook update now sends the full object Mealie requires
+- `mealie_recipes_update_structured_ingredients` accepts plain unit/food names and resolves them to existing units/foods instead of failing with HTTP 500
+- Test suite runs on fastmcp 4 (compat shim for the removed `get_tools()`)
+
 ## [1.10.0] - 2026-11-11
 
 ### Added

@@ -132,6 +132,17 @@ from tools.comments import (
     comments_update,
     comments_delete,
 )
+from tools.extended import (
+    api_request,
+    api_endpoints,
+    api_schema,
+    recipes_patch,
+    recipes_set_tools,
+    recipes_reparse,
+    recipes_audit,
+    recipes_set_image_from_url,
+    recipes_fill_missing_images,
+)
 from tools.labels import (
     labels_list,
     labels_create,
@@ -1357,20 +1368,25 @@ def mealie_foods_update(
     food_id: str,
     name: str | None = None,
     description: str | None = None,
-    label_id: str | None = None
+    label_id: str | None = None,
+    plural_name: str | None = None,
+    aliases: list[str] | None = None,
 ) -> str:
-    """Update an existing food.
+    """Update an existing food. Only the fields you pass change.
 
     Args:
         food_id: The food's ID
-        name: New name for the food
+        name: New name
         description: New description
-        label_id: Label ID (UUID) to assign to the food
+        label_id: Label ID (UUID) to assign; pass "" to clear the label
+        plural_name: New plural name
+        aliases: Replace the alias list (e.g. ["ground cumin"])
 
     Returns:
         JSON string with updated food details
     """
-    return foods_update(food_id=food_id, name=name, description=description, label_id=label_id)
+    return foods_update(food_id=food_id, name=name, description=description, label_id=label_id,
+                        plural_name=plural_name, aliases=aliases)
 
 
 @mcp.tool()
@@ -1451,20 +1467,32 @@ def mealie_units_update(
     unit_id: str,
     name: str | None = None,
     description: str | None = None,
-    abbreviation: str | None = None
+    abbreviation: str | None = None,
+    plural_name: str | None = None,
+    plural_abbreviation: str | None = None,
+    use_abbreviation: bool | None = None,
+    fraction: bool | None = None,
+    aliases: list[str] | None = None,
 ) -> str:
-    """Update an existing unit.
+    """Update an existing unit. Only the fields you pass change.
 
     Args:
         unit_id: The unit's ID
-        name: New name for the unit
+        name: New name
         description: New description
-        abbreviation: New abbreviation
+        abbreviation: New abbreviation (e.g. "tbsp")
+        plural_name: New plural name
+        plural_abbreviation: New plural abbreviation
+        use_abbreviation: Show the abbreviation instead of the name
+        fraction: Display quantities as fractions
+        aliases: Replace the alias list
 
     Returns:
         JSON string with updated unit details
     """
-    return units_update(unit_id=unit_id, name=name, description=description, abbreviation=abbreviation)
+    return units_update(unit_id=unit_id, name=name, description=description, abbreviation=abbreviation,
+                        plural_name=plural_name, plural_abbreviation=plural_abbreviation,
+                        use_abbreviation=use_abbreviation, fraction=fraction, aliases=aliases)
 
 
 @mcp.tool()
@@ -1719,22 +1747,28 @@ def mealie_cookbooks_list() -> str:
 @mcp.tool()
 def mealie_cookbooks_create(
     name: str,
-    description: str = None,
-    slug: str = None,
-    public: bool = False
+    description: str | None = None,
+    slug: str | None = None,
+    public: bool = False,
+    query_filter_string: str | None = None,
+    position: int | None = None,
 ) -> str:
-    """Create a new cookbook.
+    """Create a new cookbook (a saved recipe filter).
 
     Args:
-        name: Name for the new cookbook
+        name: Cookbook name
         description: Optional description
         slug: Optional URL slug
         public: Whether the cookbook is public (default: False)
+        query_filter_string: Mealie filter deciding which recipes appear, e.g.
+            'tags.name CONTAINS ANY ["Vegan", "Vegetarian"]' or 'recipe_category.name IN ["Dessert"]'
+        position: Sort position in the sidebar
 
     Returns:
         JSON string with created cookbook details
     """
-    return cookbooks_create(name=name, description=description, slug=slug, public=public)
+    return cookbooks_create(name=name, description=description, slug=slug, public=public,
+                            query_filter_string=query_filter_string, position=position)
 
 
 @mcp.tool()
@@ -1753,30 +1787,29 @@ def mealie_cookbooks_get(cookbook_id: str) -> str:
 @mcp.tool()
 def mealie_cookbooks_update(
     cookbook_id: str,
-    name: str = None,
-    description: str = None,
-    slug: str = None,
-    public: bool = None
+    name: str | None = None,
+    description: str | None = None,
+    slug: str | None = None,
+    public: bool | None = None,
+    query_filter_string: str | None = None,
+    position: int | None = None,
 ) -> str:
-    """Update a cookbook.
+    """Update a cookbook. Only the fields you pass change.
 
     Args:
         cookbook_id: The cookbook's ID
-        name: New name for the cookbook
+        name: New name
         description: New description
         slug: New URL slug
         public: Whether the cookbook is public
+        query_filter_string: New Mealie filter (see mealie_cookbooks_create)
+        position: Sort position in the sidebar
 
     Returns:
         JSON string with updated cookbook details
     """
-    return cookbooks_update(
-        cookbook_id=cookbook_id,
-        name=name,
-        description=description,
-        slug=slug,
-        public=public
-    )
+    return cookbooks_update(cookbook_id=cookbook_id, name=name, description=description, slug=slug,
+                            public=public, query_filter_string=query_filter_string, position=position)
 
 
 @mcp.tool()
@@ -2012,6 +2045,189 @@ def mealie_timeline_update_image(event_id: str, image_url: str) -> str:
         )
     """
     return timeline_update_image(event_id=event_id, image_url=image_url)
+
+
+# =============================================================================
+# Generic API access + recipe maintenance (FORK)
+# =============================================================================
+
+@mcp.tool()
+def mealie_api_request(
+    method: str,
+    path: str,
+    params: dict | None = None,
+    body: dict | list | None = None,
+    max_chars: int = 20000,
+) -> str:
+    """Call ANY Mealie API endpoint directly (full API coverage).
+
+    Prefer a dedicated mealie_* tool when one exists. Use this for everything else
+    (households, users, groups, shopping list items, assets, explore, admin, ...).
+    Find endpoints with mealie_api_endpoints and their body shape with mealie_api_schema.
+
+    Args:
+        method: GET, POST, PUT, PATCH or DELETE
+        path: Endpoint path starting with /api/ (e.g. "/api/households/shopping/items")
+        params: Query parameters (e.g. {"perPage": 50, "search": "onion"})
+        body: JSON body for POST/PUT/PATCH (Mealie uses camelCase keys)
+        max_chars: Truncate the response to this many characters
+
+    Returns:
+        JSON string with the API response
+    """
+    return api_request(method=method, path=path, params=params, body=body, max_chars=max_chars)
+
+
+@mcp.tool()
+def mealie_api_endpoints(search: str | None = None, tag: str | None = None, limit: int = 200) -> str:
+    """List Mealie API endpoints from your instance's live OpenAPI spec.
+
+    Args:
+        search: Text to match against method, path, summary or tag (e.g. "label", "merge")
+        tag: Only endpoints with this OpenAPI tag (e.g. "Recipe: CRUD", "Admin: Backups")
+        limit: Maximum endpoints to return
+
+    Returns:
+        JSON string with endpoint, summary and tags for each match
+    """
+    return api_endpoints(search=search, tag=tag, limit=limit)
+
+
+@mcp.tool()
+def mealie_api_schema(method: str, path: str, depth: int = 3, max_chars: int = 20000) -> str:
+    """Show the parameters, request body and response schema for one Mealie endpoint.
+
+    Args:
+        method: HTTP method (e.g. "PUT")
+        path: Path template exactly as listed by mealie_api_endpoints (e.g. "/api/recipes/{slug}")
+        depth: How many levels of $ref to expand
+        max_chars: Truncate the output to this many characters
+
+    Returns:
+        JSON string with the endpoint's schema
+    """
+    return api_schema(method=method, path=path, depth=depth, max_chars=max_chars)
+
+
+@mcp.tool()
+def mealie_recipes_patch(slug: str, fields: dict) -> str:
+    """Update any recipe fields (GET, merge, PUT), using Mealie's camelCase field names.
+
+    Examples: {"recipeServings": 4}, {"orgURL": "https://..."},
+    {"settings": {"public": true}}, {"nutrition": {"calories": "350"}},
+    {"recipeYield": "muffins", "recipeYieldQuantity": 12}.
+    Nested objects (settings, nutrition) are merged; lists are replaced.
+
+    Args:
+        slug: Recipe slug
+        fields: Fields to set
+
+    Returns:
+        JSON string confirming which fields changed
+    """
+    return recipes_patch(slug=slug, fields=fields)
+
+
+@mcp.tool()
+def mealie_recipes_set_tools(slug: str, tool_names: list[str], create_missing: bool = True) -> str:
+    """Set the kitchen tools a recipe needs (replaces the current list).
+
+    Args:
+        slug: Recipe slug
+        tool_names: Tool names, e.g. ["Air Fryer", "Blender"]
+        create_missing: Create tools that don't exist yet (default True)
+
+    Returns:
+        JSON string with the tools now on the recipe
+    """
+    return recipes_set_tools(slug=slug, tool_names=tool_names, create_missing=create_missing)
+
+
+@mcp.tool()
+def mealie_recipes_reparse(
+    slug: str,
+    parser: str = "nlp",
+    min_confidence: float = 0.75,
+    create_missing_foods: bool = True,
+    force: bool = False,
+    fix_servings: bool = True,
+    dry_run: bool = False,
+) -> str:
+    """Turn a recipe's plain-text ingredient lines into structured ingredients, server-side.
+
+    Runs Mealie's parser on every unparsed line, matches units and foods, creates missing
+    foods if allowed, and saves the recipe. Lines below min_confidence are kept as plain
+    text (quantity cleared, so they no longer display as "1 1 cup ..."). Returns a compact
+    summary instead of raw parser output. Also fills servings from yield text like
+    "8 servings" when servings are 0.
+
+    Args:
+        slug: Recipe slug
+        parser: "nlp" (default), "brute" or "openai"
+        min_confidence: Minimum average parser confidence to accept a line (0-1)
+        create_missing_foods: Create foods the parser found but Mealie doesn't have
+        force: Re-parse lines that are already structured too
+        fix_servings: Derive servings/yield quantity from the yield text when they are 0
+        dry_run: Report what would change without saving
+
+    Returns:
+        JSON summary: lines parsed, lines kept as text, foods created, servings change
+    """
+    return recipes_reparse(slug=slug, parser=parser, min_confidence=min_confidence,
+                           create_missing_foods=create_missing_foods, force=force,
+                           fix_servings=fix_servings, dry_run=dry_run)
+
+
+@mcp.tool()
+def mealie_recipes_audit(slugs: list[str] | None = None) -> str:
+    """Data-quality report: one compact row per recipe with flags such as
+    unparsed_ingredients, no_image, no_description, no_category, no_tags, no_tools,
+    no_servings, no_total_time, no_source_url.
+
+    Args:
+        slugs: Only these recipes (default: all)
+
+    Returns:
+        JSON string with flag counts and per-recipe flags
+    """
+    return recipes_audit(slugs=slugs)
+
+
+@mcp.tool()
+def mealie_recipes_set_image_from_url(slug: str, image_url: str) -> str:
+    """Set a recipe's image from a direct image URL. Mealie downloads it itself.
+
+    Args:
+        slug: Recipe slug
+        image_url: Direct URL of an image (jpg/png/webp)
+
+    Returns:
+        JSON string confirming the update
+    """
+    return recipes_set_image_from_url(slug=slug, image_url=image_url)
+
+
+@mcp.tool()
+def mealie_recipes_fill_missing_images(
+    slugs: list[str] | None = None,
+    dry_run: bool = False,
+    replace_existing: bool = False,
+) -> str:
+    """Give recipes an image from their own source page (orgURL).
+
+    For each recipe without an image, fetches its source page, takes the recipe image
+    from the page's Recipe JSON-LD (or og:image), and has Mealie download it. Recipes
+    without a source URL are listed so an image can be supplied another way.
+
+    Args:
+        slugs: Only these recipes (default: all)
+        dry_run: Only report which image would be used
+        replace_existing: Also replace images on recipes that already have one
+
+    Returns:
+        JSON report: filled, would_fill, no_source_url, no_image_on_page, errors
+    """
+    return recipes_fill_missing_images(slugs=slugs, dry_run=dry_run, replace_existing=replace_existing)
 
 
 # =============================================================================

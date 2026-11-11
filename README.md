@@ -17,7 +17,7 @@ It can run three ways:
 
 ## Features
 
-### Tools (125 total; highlights below)
+### Tools (134 total; highlights below)
 
 **Recipes**
 - `mealie_recipes_search` - Search recipes by name, tags, or categories
@@ -51,6 +51,13 @@ It can run three ways:
 - `mealie_shopping_add_recipe` - Add recipe ingredients to list
 - `mealie_shopping_generate_from_mealplan` - Generate shopping list from meal plan
 - `mealie_shopping_clear_checked` - Clear all checked items
+
+**Full API & maintenance**
+- `mealie_api_request` / `mealie_api_endpoints` / `mealie_api_schema` - Call and discover any Mealie endpoint
+- `mealie_recipes_reparse` - Turn imported plain-text ingredients into structured ones, server-side
+- `mealie_recipes_audit` - Find recipes missing images, servings, categories, parsed ingredients and more
+- `mealie_recipes_patch` / `mealie_recipes_set_tools` - Edit any recipe field; assign kitchen tools
+- `mealie_recipes_fill_missing_images` - Add images from each recipe's source page
 
 **Foods & Labels**
 - `mealie_foods_list` - List foods with `search`, `query_filter` (e.g. `labelId IS NULL`) and a compact `slim` view

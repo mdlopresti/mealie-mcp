@@ -924,7 +924,9 @@ class MealieClient:
         food_id: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        label_id: Optional[str] = None
+        label_id: Optional[str] = None,
+        plural_name: Optional[str] = None,
+        aliases: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
         """Update an existing food.
 
@@ -950,7 +952,11 @@ class MealieClient:
         if description is not None:
             current_food["description"] = description
         if label_id is not None:
-            current_food["labelId"] = label_id
+            current_food["labelId"] = label_id or None
+        if plural_name is not None:
+            current_food["pluralName"] = plural_name
+        if aliases is not None:
+            current_food["aliases"] = [{"name": a} for a in aliases]
 
         # PUT the complete updated object
         return self.put(f"/api/foods/{food_id}", json=current_food)
@@ -965,7 +971,7 @@ class MealieClient:
             "fromFood": from_food_id,
             "toFood": to_food_id
         }
-        return self.post("/api/foods/merge", json=payload)
+        return self.put("/api/foods/merge", json=payload)
 
     # -------------------------------------------------------------------------
     # Labels (group-level; used to group foods on shopping lists)
@@ -1039,18 +1045,30 @@ class MealieClient:
         unit_id: str,
         name: Optional[str] = None,
         description: Optional[str] = None,
-        abbreviation: Optional[str] = None
+        abbreviation: Optional[str] = None,
+        plural_name: Optional[str] = None,
+        plural_abbreviation: Optional[str] = None,
+        use_abbreviation: Optional[bool] = None,
+        fraction: Optional[bool] = None,
+        aliases: Optional[list[str]] = None,
     ) -> Dict[str, Any]:
-        """Update an existing unit."""
-        payload = {}
-        if name is not None:
-            payload["name"] = name
-        if description is not None:
-            payload["description"] = description
-        if abbreviation is not None:
-            payload["abbreviation"] = abbreviation
-
-        return self.patch(f"/api/units/{unit_id}", json=payload)
+        """Update a unit (fetches the current unit, then PUTs the full object)."""
+        current = self.get(f"/api/units/{unit_id}")
+        changes = {
+            "name": name,
+            "description": description,
+            "abbreviation": abbreviation,
+            "pluralName": plural_name,
+            "pluralAbbreviation": plural_abbreviation,
+            "useAbbreviation": use_abbreviation,
+            "fraction": fraction,
+        }
+        for key, value in changes.items():
+            if value is not None:
+                current[key] = value
+        if aliases is not None:
+            current["aliases"] = [{"name": a} for a in aliases]
+        return self.put(f"/api/units/{unit_id}", json=current)
 
     def delete_unit(self, unit_id: str) -> None:
         """Delete a unit."""
@@ -1062,7 +1080,7 @@ class MealieClient:
             "fromUnit": from_unit_id,
             "toUnit": to_unit_id
         }
-        return self.post("/api/units/merge", json=payload)
+        return self.put("/api/units/merge", json=payload)
 
     # -------------------------------------------------------------------------
     # Cookbooks Management
@@ -1077,14 +1095,21 @@ class MealieClient:
         name: str,
         description: Optional[str] = None,
         slug: Optional[str] = None,
-        public: bool = False
+        public: bool = False,
+        query_filter_string: Optional[str] = None,
+        position: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Create a new cookbook."""
-        payload = {"name": name, "public": public}
+        """Create a new cookbook. query_filter_string uses Mealie's filter syntax,
+        e.g. 'tags.name CONTAINS ALL ["Vegan"]' or 'recipe_category.name IN ["Dessert"]'."""
+        payload: Dict[str, Any] = {"name": name, "public": public}
         if description is not None:
             payload["description"] = description
         if slug is not None:
             payload["slug"] = slug
+        if query_filter_string is not None:
+            payload["queryFilterString"] = query_filter_string
+        if position is not None:
+            payload["position"] = position
         return self.post("/api/households/cookbooks", json=payload)
 
     def get_cookbook(self, cookbook_id: str) -> Dict[str, Any]:
@@ -1097,18 +1122,34 @@ class MealieClient:
         name: Optional[str] = None,
         description: Optional[str] = None,
         slug: Optional[str] = None,
-        public: Optional[bool] = None
+        public: Optional[bool] = None,
+        query_filter_string: Optional[str] = None,
+        position: Optional[int] = None,
     ) -> Dict[str, Any]:
-        """Update a cookbook."""
-        payload = {}
-        if name is not None:
-            payload["name"] = name
-        if description is not None:
-            payload["description"] = description
-        if slug is not None:
-            payload["slug"] = slug
-        if public is not None:
-            payload["public"] = public
+        """Update a cookbook (fetches the current cookbook, then PUTs the full object)."""
+        current = self.get(f"/api/households/cookbooks/{cookbook_id}")
+        payload = {
+            "id": current.get("id", cookbook_id),
+            "groupId": current.get("groupId"),
+            "householdId": current.get("householdId"),
+            "name": current.get("name"),
+            "description": current.get("description", ""),
+            "slug": current.get("slug"),
+            "position": current.get("position", 1),
+            "public": current.get("public", False),
+            "queryFilterString": current.get("queryFilterString", ""),
+        }
+        changes = {
+            "name": name,
+            "description": description,
+            "slug": slug,
+            "public": public,
+            "queryFilterString": query_filter_string,
+            "position": position,
+        }
+        for key, value in changes.items():
+            if value is not None:
+                payload[key] = value
         return self.put(f"/api/households/cookbooks/{cookbook_id}", json=payload)
 
     def delete_cookbook(self, cookbook_id: str) -> None:
@@ -1670,14 +1711,12 @@ class MealieClient:
         name: Optional[str] = None,
         slug: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Update a category."""
-        payload = {}
-        if name is not None:
-            payload["name"] = name
-        if slug is not None:
-            payload["slug"] = slug
-
-        return self.patch(f"/api/organizers/categories/{category_id}", json=payload)
+        """Rename a category. Mealie derives the slug from the name, so `slug` is ignored."""
+        current = self.get(f"/api/organizers/categories/{category_id}")
+        payload = {
+            "name": name if name is not None else current.get("name"),
+        }
+        return self.put(f"/api/organizers/categories/{category_id}", json=payload)
 
     def delete_category(self, category_id: str) -> None:
         """Delete a category."""
@@ -1689,14 +1728,12 @@ class MealieClient:
         name: Optional[str] = None,
         slug: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Update a tag."""
-        payload = {}
-        if name is not None:
-            payload["name"] = name
-        if slug is not None:
-            payload["slug"] = slug
-
-        return self.patch(f"/api/organizers/tags/{tag_id}", json=payload)
+        """Rename a tag. Mealie derives the slug from the name, so `slug` is ignored."""
+        current = self.get(f"/api/organizers/tags/{tag_id}")
+        payload = {
+            "name": name if name is not None else current.get("name"),
+        }
+        return self.put(f"/api/organizers/tags/{tag_id}", json=payload)
 
     def delete_tag(self, tag_id: str) -> None:
         """Delete a tag."""
@@ -1708,14 +1745,13 @@ class MealieClient:
         name: Optional[str] = None,
         slug: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Update a tool."""
-        payload = {}
-        if name is not None:
-            payload["name"] = name
-        if slug is not None:
-            payload["slug"] = slug
-
-        return self.patch(f"/api/organizers/tools/{tool_id}", json=payload)
+        """Rename a tool. Mealie derives the slug from the name, so `slug` is ignored."""
+        current = self.get(f"/api/organizers/tools/{tool_id}")
+        payload = {
+            "name": name if name is not None else current.get("name"),
+            "householdsWithTool": current.get("householdsWithTool", []),
+        }
+        return self.put(f"/api/organizers/tools/{tool_id}", json=payload)
 
     def delete_tool(self, tool_id: str) -> None:
         """Delete a tool."""

@@ -665,6 +665,37 @@ def recipes_update_structured_ingredients(
             created_units = {}  # name -> id mapping
             created_foods = {}  # name -> id mapping
 
+            # FORK: accept plain names ("cup", "flour") and resolve them to existing
+            # units/foods by name, plural or alias before anything is created.
+            _lookup_cache: dict = {}
+
+            def _resolve_named(kind: str, value):
+                if isinstance(value, str):
+                    value = {"name": value}
+                if not isinstance(value, dict) or value.get("id") or not value.get("name"):
+                    return value
+                key = (kind, value["name"].strip().lower())
+                if key not in _lookup_cache:
+                    found = None
+                    data = client.get(f"/api/{kind}", params={"search": value["name"], "perPage": 50})
+                    for item in (data.get("items", []) if isinstance(data, dict) else []):
+                        names = {(item.get("name") or "").lower(), (item.get("pluralName") or "").lower(),
+                                 (item.get("abbreviation") or "").lower()}
+                        names |= {(a.get("name") or "").lower() for a in item.get("aliases") or []}
+                        if key[1] in names:
+                            found = {"id": item["id"], "name": item["name"]}
+                            break
+                    _lookup_cache[key] = found
+                return _lookup_cache[key] or value
+
+            for parsed in parsed_ingredients:
+                data = parsed["ingredient"] if isinstance(parsed, dict) and "ingredient" in parsed else parsed
+                if isinstance(data, dict):
+                    if data.get("unit"):
+                        data["unit"] = _resolve_named("units", data["unit"])
+                    if data.get("food"):
+                        data["food"] = _resolve_named("foods", data["food"])
+
             for parsed in parsed_ingredients:
                 if isinstance(parsed, dict) and "ingredient" in parsed:
                     ingredient_data = parsed["ingredient"]

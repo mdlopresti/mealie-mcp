@@ -55,7 +55,9 @@ def cookbooks_create(
     name: str,
     description: Optional[str] = None,
     slug: Optional[str] = None,
-    public: bool = False
+    public: bool = False,
+    query_filter_string: Optional[str] = None,
+    position: Optional[int] = None,
 ) -> str:
     """Create a new cookbook.
 
@@ -70,7 +72,7 @@ def cookbooks_create(
     """
     try:
         with MealieClient() as client:
-            cookbook = client.create_cookbook(name, description, slug, public)
+            cookbook = client.create_cookbook(name, description, slug, public, query_filter_string, position)
             return json.dumps({
                 "success": True,
                 "message": "Cookbook created successfully",
@@ -127,7 +129,9 @@ def cookbooks_update(
     name: Optional[str] = None,
     description: Optional[str] = None,
     slug: Optional[str] = None,
-    public: Optional[bool] = None
+    public: Optional[bool] = None,
+    query_filter_string: Optional[str] = None,
+    position: Optional[int] = None,
 ) -> str:
     """Update a cookbook.
 
@@ -143,7 +147,7 @@ def cookbooks_update(
     """
     try:
         with MealieClient() as client:
-            cookbook = client.update_cookbook(cookbook_id, name, description, slug, public)
+            cookbook = client.update_cookbook(cookbook_id, name, description, slug, public, query_filter_string, position)
             return json.dumps({
                 "success": True,
                 "message": "Cookbook updated successfully",

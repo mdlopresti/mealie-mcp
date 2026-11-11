@@ -9,6 +9,24 @@ For mock data builders, see tests/unit/builders.py.
 
 import pytest
 import respx
+
+# FORK: fastmcp 4 removed FastMCP.get_tools()/get_resources(); the suite still uses them.
+from fastmcp import FastMCP as _FastMCP
+
+if not hasattr(_FastMCP, "get_tools"):
+    async def _get_tools(self):
+        return {t.name: t for t in await self.list_tools()}
+    _FastMCP.get_tools = _get_tools  # type: ignore[attr-defined]
+
+if not hasattr(_FastMCP, "get_resources") and hasattr(_FastMCP, "list_resources"):
+    async def _get_resources(self):
+        return {str(r.uri): r for r in await self.list_resources()}
+    _FastMCP.get_resources = _get_resources  # type: ignore[attr-defined]
+
+if not hasattr(_FastMCP, "get_resource_templates") and hasattr(_FastMCP, "list_resource_templates"):
+    async def _get_resource_templates(self):
+        return {t.uri_template: t for t in await self.list_resource_templates()}
+    _FastMCP.get_resource_templates = _get_resource_templates  # type: ignore[attr-defined]
 from httpx import Response
 from src.client import MealieClient
 from tests.unit.builders import (

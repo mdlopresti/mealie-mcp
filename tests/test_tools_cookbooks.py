@@ -69,7 +69,7 @@ class TestCookbooks:
         assert data["success"] is True
         assert "cookbook" in data
         assert data["message"] == "Cookbook created successfully"
-        mock_client.create_cookbook.assert_called_once_with("Weeknight Dinners", "Quick meals", None, False)
+        mock_client.create_cookbook.assert_called_once_with("Weeknight Dinners", "Quick meals", None, False, None, None)
 
     def test_cookbooks_get(self):
         """Test getting a cookbook by ID."""
@@ -98,7 +98,7 @@ class TestCookbooks:
         assert data["success"] is True
         assert "cookbook" in data
         assert data["message"] == "Cookbook updated successfully"
-        mock_client.update_cookbook.assert_called_once_with("123", "Dinner Recipes", "Updated", None, None)
+        mock_client.update_cookbook.assert_called_once_with("123", "Dinner Recipes", "Updated", None, None, None, None)
 
     def test_cookbooks_delete(self):
         """Test deleting a cookbook."""
