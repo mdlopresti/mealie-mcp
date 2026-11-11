@@ -28,7 +28,11 @@ class BearerAuthMiddleware:
         self.expected = f"Bearer {token}".encode()
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
+        # Let OAuth discovery probes (/.well-known/...) through unauthenticated
+        # so they get a plain 404. Answering them with 401 makes clients such
+        # as Claude's custom connectors assume OAuth is required instead of
+        # using the static bearer header they were configured with.
+        if scope["type"] != "http" or scope.get("path", "").startswith("/.well-known/"):
             await self.app(scope, receive, send)
             return
 
