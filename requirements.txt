@@ -1,5 +1,5 @@
 # FastMCP - Model Context Protocol framework
-fastmcp>=0.1.0
+fastmcp>=2.3.2
 
 # HTTP client for Mealie API
 httpx>=0.27.0
@@ -14,3 +14,6 @@ pytest-asyncio>=0.21.0
 # YAML parsing (pin to version with pre-built wheels to avoid build failures in CI)
 # Required by fastmcp and other dependencies
 PyYAML>=6.0.1
+
+# ASGI server for HTTP transport (Home Assistant app / container mode)
+uvicorn>=0.30.0

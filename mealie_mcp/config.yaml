@@ -1,0 +1,26 @@
+name: Mealie MCP Server
+version: "1.0.0"
+slug: mealie_mcp
+description: Model Context Protocol server exposing your Mealie recipes, meal plans and shopping lists to AI assistants.
+url: https://github.com/warinthestars/mealie-mcp
+arch:
+  - amd64
+  - aarch64
+image: ghcr.io/warinthestars/mealie-mcp-addon
+init: false
+startup: application
+boot: auto
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: MCP streamable HTTP endpoint (/mcp)
+options:
+  mealie_url: ""
+  mealie_api_token: ""
+  mcp_auth_token: ""
+  log_level: info
+schema:
+  mealie_url: url
+  mealie_api_token: password
+  mcp_auth_token: password?
+  log_level: list(debug|info|warning|error)

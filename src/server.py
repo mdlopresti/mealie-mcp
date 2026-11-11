@@ -2515,5 +2515,15 @@ def resource_shopping_list_detail(list_id: str) -> str:
 # Server entry point
 # =============================================================================
 
+def main() -> None:
+    """Run over stdio (default) or HTTP when MCP_TRANSPORT=http."""
+    transport = os.getenv("MCP_TRANSPORT", "stdio").lower()
+    if transport in ("http", "streamable-http"):
+        from http_transport import run_http
+        run_http(mcp)
+    else:
+        mcp.run()
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()

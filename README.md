@@ -278,3 +278,15 @@ Contributions welcome! Please open an issue or PR.
 - [Mealie](https://mealie.io/) - Self-hosted recipe manager
 - [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification
 - [FastMCP](https://github.com/jlowin/fastmcp) - Python MCP framework
+
+## Home Assistant App
+
+This repository is also a Home Assistant app repository. The app runs the server over streamable HTTP on port `8099` (`/mcp`) with optional bearer-token auth.
+
+1. In Home Assistant go to **Settings > Apps > App store**, open the menu (top right) > **Repositories**, and add `https://github.com/warinthestars/mealie-mcp`.
+2. Install **Mealie MCP Server**, fill in `mealie_url`, `mealie_api_token` and (recommended) `mcp_auth_token`, then start it.
+3. Point MCP clients at `http://<ha-host>:8099/mcp`.
+
+The app image is built for amd64 and aarch64 by `.github/workflows/ha-addon.yml` and published to `ghcr.io/warinthestars/mealie-mcp-addon`. Bump `version` in `mealie_mcp/config.yaml` to release an update. See [mealie_mcp/DOCS.md](mealie_mcp/DOCS.md) for details.
+
+The HTTP transport can also be used outside Home Assistant: set `MCP_TRANSPORT=http` (plus optional `MCP_PORT`, `MCP_AUTH_TOKEN`).
